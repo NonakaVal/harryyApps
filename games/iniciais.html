@@ -47,60 +47,303 @@
 const VOWELS = ['A', 'E', 'I', 'O', 'U'];
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 const PAIRS_PER_ROUND = 5;
+const DEFAULT_TITLE = 'Trace a letra até o objeto que começa com ela.';
 
-const DATA = [
-  { initial: 'A', label: 'Abelha', emoji: '🐝' },
-  { initial: 'B', label: 'Bola', emoji: '⚽' },
-  { initial: 'C', label: 'Casa', emoji: '🏠' },
-  { initial: 'D', label: 'Dado', emoji: '🎲' },
-  { initial: 'E', label: 'Elefante', emoji: '🐘' },
-  { initial: 'F', label: 'Flor', emoji: '🌸' },
-  { initial: 'G', label: 'Gato', emoji: '🐱' },
-  { initial: 'H', label: 'Hambúrguer', emoji: '🍔' },
-  { initial: 'I', label: 'Iguana', emoji: '🦎' },
-  { initial: 'J', label: 'Jacaré', emoji: '🐊' },
-  { initial: 'K', label: 'Kiwi', emoji: '🥝' },
-  { initial: 'L', label: 'Leão', emoji: '🦁' },
-  { initial: 'M', label: 'Maçã', emoji: '🍎' },
-  { initial: 'N', label: 'Navio', emoji: '🚢' },
-  { initial: 'O', label: 'Ovo', emoji: '🥚' },
-  { initial: 'P', label: 'Pizza', emoji: '🍕' },
-  { initial: 'Q', label: 'Queijo', emoji: '🧀' },
-  { initial: 'R', label: 'Rato', emoji: '🐭' },
-  { initial: 'S', label: 'Sapo', emoji: '🐸' },
-  { initial: 'T', label: 'Tigre', emoji: '🐯' },
-  { initial: 'U', label: 'Uva', emoji: '🍇' },
-  { initial: 'V', label: 'Vaca', emoji: '🐮' },
-  { initial: 'W', label: 'Waffle', emoji: '🧇' },
-  { initial: 'X', label: 'Xícara', emoji: '☕' },
-  { initial: 'Y', label: 'Yoga', emoji: '🧘' },
-  { initial: 'Z', label: 'Zebra', emoji: '🦓' }
+const ALPHABET_DATA = [
+  { letter: 'A', examples: [
+    { word: 'Abelha', emoji: '🐝' },
+    { word: 'Avião', emoji: '✈️' },
+    { word: 'Aranha', emoji: '🕷️' }
+  ]},
+  { letter: 'B', examples: [
+    { word: 'Bola', emoji: '⚽' },
+    { word: 'Banana', emoji: '🍌' },
+    { word: 'Borboleta', emoji: '🦋' }
+  ]},
+  { letter: 'C', examples: [
+    { word: 'Cachorro', emoji: '🐶' },
+    { word: 'Casa', emoji: '🏠' },
+    { word: 'Coração', emoji: '❤️' }
+  ]},
+  { letter: 'D', examples: [
+    { word: 'Dado', emoji: '🎲' },
+    { word: 'Dinossauro', emoji: '🦖' },
+    { word: 'Diamante', emoji: '💎' }
+  ]},
+  { letter: 'E', examples: [
+    { word: 'Elefante', emoji: '🐘' },
+    { word: 'Estrela', emoji: '⭐' },
+    { word: 'Escova', emoji: '🪥' }
+  ]},
+  { letter: 'F', examples: [
+    { word: 'Foguete', emoji: '🚀' },
+    { word: 'Flor', emoji: '🌸' },
+    { word: 'Foca', emoji: '🦭' }
+  ]},
+  { letter: 'G', examples: [
+    { word: 'Gato', emoji: '🐱' },
+    { word: 'Girafa', emoji: '🦒' },
+    { word: 'Guitarra', emoji: '🎸' }
+  ]},
+  { letter: 'H', examples: [
+    { word: 'Helicóptero', emoji: '🚁' },
+    { word: 'Hospital', emoji: '🏥' },
+    { word: 'Hambúrguer', emoji: '🍔' }
+  ]},
+  { letter: 'I', examples: [
+    { word: 'Ilha', emoji: '🏝️' },
+    { word: 'Iguana', emoji: '🦎' },
+    { word: 'Iogurte', emoji: '🍦' }
+  ]},
+  { letter: 'J', examples: [
+    { word: 'Jacaré', emoji: '🐊' },
+    { word: 'Janela', emoji: '🪟' },
+    { word: 'Joaninha', emoji: '🐞' }
+  ]},
+  { letter: 'K', examples: [
+    { word: 'Kiwi', emoji: '🥝' },
+    { word: 'Karaokê', emoji: '🎤' },
+    { word: 'Kart', emoji: '🏎️' }
+  ]},
+  { letter: 'L', examples: [
+    { word: 'Leão', emoji: '🦁' },
+    { word: 'Lua', emoji: '🌙' },
+    { word: 'Lápis', emoji: '✏️' }
+  ]},
+  { letter: 'M', examples: [
+    { word: 'Macaco', emoji: '🐵' },
+    { word: 'Maçã', emoji: '🍎' },
+    { word: 'Moto', emoji: '🏍️' }
+  ]},
+  { letter: 'N', examples: [
+    { word: 'Nuvem', emoji: '☁️' },
+    { word: 'Navio', emoji: '🚢' },
+    { word: 'Nariz', emoji: '👃' }
+  ]},
+  { letter: 'O', examples: [
+    { word: 'Ovelha', emoji: '🐑' },
+    { word: 'Ovo', emoji: '🥚' },
+    { word: 'Óculos', emoji: '👓' }
+  ]},
+  { letter: 'P', examples: [
+    { word: 'Pato', emoji: '🦆' },
+    { word: 'Pipoca', emoji: '🍿' },
+    { word: 'Peixe', emoji: '🐟' }
+  ]},
+  { letter: 'Q', examples: [
+    { word: 'Queijo', emoji: '🧀' },
+    { word: 'Quadro', emoji: '🖼️' },
+    { word: 'Quati', emoji: '🦝' }
+  ]},
+  { letter: 'R', examples: [
+    { word: 'Robô', emoji: '🤖' },
+    { word: 'Rato', emoji: '🐭' },
+    { word: 'Relógio', emoji: '⏰' }
+  ]},
+  { letter: 'S', examples: [
+    { word: 'Sapo', emoji: '🐸' },
+    { word: 'Sol', emoji: '☀️' },
+    { word: 'Sorvete', emoji: '🍨' }
+  ]},
+  { letter: 'T', examples: [
+    { word: 'Trem', emoji: '🚆' },
+    { word: 'Tigre', emoji: '🐯' },
+    { word: 'Telefone', emoji: '📞' }
+  ]},
+  { letter: 'U', examples: [
+    { word: 'Uva', emoji: '🍇' },
+    { word: 'Urso', emoji: '🐻' },
+    { word: 'Unicórnio', emoji: '🦄' }
+  ]},
+  { letter: 'V', examples: [
+    { word: 'Vaca', emoji: '🐮' },
+    { word: 'Violão', emoji: '🎸' },
+    { word: 'Vela', emoji: '🕯️' }
+  ]},
+  { letter: 'W', examples: [
+    { word: 'Wafer', emoji: '🧇' },
+    { word: 'Web', emoji: '🌐' },
+    { word: 'Walkie-talkie', emoji: '📻' }
+  ]},
+  { letter: 'X', examples: [
+    { word: 'Xícara', emoji: '☕' },
+    { word: 'Xadrez', emoji: '♟️' },
+    { word: 'Xilofone', emoji: '🎼' }
+  ]},
+  { letter: 'Y', examples: [
+    { word: 'Yin Yang', emoji: '☯️' },
+    { word: 'Yoga', emoji: '🧘' },
+    { word: 'Yakult', emoji: '🥤' }
+  ]},
+  { letter: 'Z', examples: [
+    { word: 'Zebra', emoji: '🦓' },
+    { word: 'Zíper', emoji: '🤐' },
+    { word: 'Zangão', emoji: '🐝' }
+  ]}
 ];
 
-function shuffleArray(values, random = Math.random) {
-  return [...values].sort(() => random() - 0.5);
+const EXAMPLES_BY_LETTER = new Map(
+  ALPHABET_DATA.map(entry => [entry.letter, entry.examples])
+);
+
+const THEMES = [
+  { light: '#dff3ff', main: '#8ed8f8', dark: '#1a6fc4' },
+  { light: '#f0d4ff', main: '#c77dff', dark: '#7b2cbf' },
+  { light: '#8ef0a4', main: '#5de87a', dark: '#1daa50' },
+  { light: '#ffd270', main: '#ffb03a', dark: '#b36b00' },
+  { light: '#ffd6e7', main: '#ff9fc4', dark: '#c2185b' },
+  { light: '#8de0ff', main: '#5bc8f5', dark: '#1a6fa8' }
+];
+
+const PRAISES = [
+  'Muito bem!',
+  'Isso aí!',
+  'Show!',
+  'Perfeito!',
+  'Uau!',
+  'Incrível!',
+  'Mandou bem!'
+];
+
+const ENCOURAGEMENTS = [
+  'Quase! Tente ligar à figura que começa com essa letra.',
+  'Ops! Olha a primeira letra da figura.',
+  'Tente de novo! Você consegue.',
+  'Quase lá! Procure a figura com a mesma letra.'
+];
+
+const ROUND_COMPLETIONS = [
+  'Rodada completa! Muito bem!',
+  'Mandou bem! Vamos para a próxima rodada!',
+  'Que show! Nova rodada!',
+  'Rodada concluída! Você é demais!'
+];
+
+const MATCH_PHRASES = [
+  '{letter} de {label}',
+  '{label} começa com {letter}',
+  'Muito bem! {letter} de {label}'
+];
+
+const ITEM_PHRASES = [
+  '{label}',
+  '{label}, começa com {initial}',
+  'Figura: {label}'
+];
+
+const PARTICLE_EMOJIS = ['✨', '⭐', '🌟', '🎉', '🎈', '💫', '🌈', '🎊'];
+
+let letterBag = [];
+const exampleBags = new Map();
+let lastThemeIndex = -1;
+let lastPraise = '';
+let lastEncouragement = '';
+
+function pickRandom(items, random = Math.random) {
+  return items[Math.floor(random() * items.length)];
 }
 
-function createRoundData(level, data, random = Math.random) {
-  const allowedInitials = level === 'vowels' ? VOWELS : ALPHABET;
-  const availableItems = data.filter(item => allowedInitials.includes(item.initial));
-  const groupedItems = new Map();
+function pickWithoutRepeat(items, previous, random = Math.random) {
+  if (items.length < 2) return items[0];
+  return pickRandom(items.filter(item => item !== previous), random);
+}
 
-  availableItems.forEach(item => {
-    const items = groupedItems.get(item.initial) || [];
-    groupedItems.set(item.initial, [...items, item]);
-  });
+function fillPhrase(template, values) {
+  return Object.entries(values).reduce(
+    (text, [key, value]) => text.replace(`{${key}}`, value),
+    template
+  );
+}
 
-  const initials = shuffleArray([...groupedItems.keys()], random).slice(0, PAIRS_PER_ROUND);
-  const items = initials.map(initial => {
-    const choices = groupedItems.get(initial);
-    return choices[Math.floor(random() * choices.length)];
-  });
+function shuffleArray(values, random = Math.random) {
+  const result = [...values];
+
+  for (let index = result.length - 1; index > 0; index--) {
+    const swapIndex = Math.floor(random() * (index + 1));
+    [result[index], result[swapIndex]] = [result[swapIndex], result[index]];
+  }
+
+  return result;
+}
+
+function getAllowedInitials(level) {
+  return level === 'vowels' ? VOWELS : ALPHABET;
+}
+
+function drawInitials(level, count, random = Math.random) {
+  const allowed = getAllowedInitials(level);
+  const picked = [];
+
+  while (picked.length < count) {
+    if (letterBag.length === 0) {
+      const remaining = allowed.filter(initial => !picked.includes(initial));
+      letterBag = shuffleArray(remaining, random);
+    }
+    picked.push(letterBag.pop());
+  }
+
+  return picked;
+}
+
+function takeExample(initial, random = Math.random) {
+  const examples = EXAMPLES_BY_LETTER.get(initial);
+  if (!examples?.length) return null;
+
+  let bag = exampleBags.get(initial);
+  if (!bag?.length) {
+    bag = shuffleArray(examples, random);
+    exampleBags.set(initial, bag);
+  }
+
+  return bag.pop();
+}
+
+function createRoundData(level, random = Math.random) {
+  const initials = drawInitials(level, PAIRS_PER_ROUND, random);
+  const items = initials
+    .map(initial => {
+      const example = takeExample(initial, random);
+      return example ? { initial, label: example.word, emoji: example.emoji } : null;
+    })
+    .filter(Boolean);
 
   return {
     letters: shuffleArray(initials.map(initial => ({ initial })), random),
     items: shuffleArray(items, random)
   };
+}
+
+function randomPraise(random = Math.random) {
+  lastPraise = pickWithoutRepeat(PRAISES, lastPraise, random);
+  return lastPraise;
+}
+
+function randomEncouragement(random = Math.random) {
+  lastEncouragement = pickWithoutRepeat(ENCOURAGEMENTS, lastEncouragement, random);
+  return lastEncouragement;
+}
+
+function getMatchPhrase(letter, label, random = Math.random) {
+  return fillPhrase(pickRandom(MATCH_PHRASES, random), { letter, label });
+}
+
+function getItemPhrase(item, random = Math.random) {
+  return fillPhrase(pickRandom(ITEM_PHRASES, random), {
+    label: item.label,
+    initial: item.initial
+  });
+}
+
+function applyRandomTheme(random = Math.random) {
+  const candidates = THEMES.length > 1
+    ? THEMES.filter((_, index) => index !== lastThemeIndex)
+    : THEMES;
+  const theme = pickRandom(candidates, random);
+
+  lastThemeIndex = THEMES.indexOf(theme);
+  document.body.style.setProperty('--theme-light', theme.light);
+  document.body.style.setProperty('--theme-main', theme.main);
+  document.body.style.setProperty('--theme-dark', theme.dark);
 }
 
 function isCorrectMatch(letter, item) {
@@ -198,6 +441,7 @@ let lettersColumn;
 let objectsColumn;
 let connectionsSvg;
 let activePath;
+let gameTitle;
 let gameStatus;
 let progressFill;
 let progressLabel;
@@ -220,10 +464,12 @@ function getClientPoint(event) {
 }
 
 function updateProgress() {
-  const completedInRound = completedConnections % PAIRS_PER_ROUND;
+  const completedInRound = roundLocked
+    ? PAIRS_PER_ROUND
+    : completedConnections % PAIRS_PER_ROUND;
   const percentage = (completedInRound / PAIRS_PER_ROUND) * 100;
   progressFill.style.width = `${percentage}%`;
-  progressLabel.textContent = `${completedInRound} / ${PAIRS_PER_ROUND} conexões na rodada · ${completedConnections} no total · ${starsEarned} estrelas`;
+  progressLabel.textContent = `Rodada ${currentRound + 1} · ${completedInRound} / ${PAIRS_PER_ROUND} conexões · ${completedConnections} no total · ${starsEarned} estrelas`;
   progressTrack.setAttribute('aria-valuenow', String(completedInRound));
 }
 
@@ -251,7 +497,9 @@ function createLetterCard(letter) {
   button.innerHTML = `<span>${letter.initial}</span><span class="card-sound">🔊</span>`;
   button.addEventListener('pointerdown', event => startGesture(event, button));
   button.addEventListener('keydown', event => {
-    if (event.key === 'Enter' || event.key === ' ') Sounds.speak(letter.initial);
+    if (event.key === 'Enter' || event.key === ' ') {
+      Sounds.speak(pickRandom([letter.initial, `Letra ${letter.initial}`]));
+    }
   });
   return button;
 }
@@ -264,9 +512,9 @@ function createObjectCard(item) {
   button.dataset.label = item.label;
   button.setAttribute('aria-label', `${item.label}, começa com ${item.initial}`);
   button.innerHTML = `<span class="object-emoji" aria-hidden="true">${item.emoji}</span>`;
-  button.addEventListener('pointerdown', () => Sounds.speak(item.label));
+  button.addEventListener('pointerdown', () => Sounds.speak(getItemPhrase(item)));
   button.addEventListener('keydown', event => {
-    if (event.key === 'Enter' || event.key === ' ') Sounds.speak(item.label);
+    if (event.key === 'Enter' || event.key === ' ') Sounds.speak(getItemPhrase(item));
   });
   return button;
 }
@@ -277,10 +525,13 @@ function renderRound() {
   clearConnections();
   lettersColumn.innerHTML = '';
   objectsColumn.innerHTML = '';
-  const round = createRoundData(currentLevel, DATA);
+  applyRandomTheme();
+  gameTitle.textContent = DEFAULT_TITLE;
 
+  const round = createRoundData(currentLevel);
   round.letters.forEach(letter => lettersColumn.appendChild(createLetterCard(letter)));
   round.items.forEach(item => objectsColumn.appendChild(createObjectCard(item)));
+  updateProgress();
   updateStatus('Escolha uma letra e trace até o objeto correspondente.');
 }
 
@@ -330,7 +581,7 @@ function handleGestureEnd(event) {
   } else if (gesture.moved) {
     rejectGesture(letterElement, target);
   } else {
-    Sounds.speak(letterElement.dataset.initial);
+    Sounds.speak(pickRandom([letterElement.dataset.initial, `Letra ${letterElement.dataset.initial}`]));
     activePath.setAttribute('d', '');
   }
 
@@ -353,20 +604,29 @@ function connectPair(letterElement, objectElement, points) {
   objectElement.classList.add('connected');
   activePath.setAttribute('d', '');
   completedConnections++;
-  if (completedConnections % PAIRS_PER_ROUND === 0) {
+
+  const letter = letterElement.dataset.initial;
+  const label = objectElement.dataset.label;
+  const connectedThisRound = objectsColumn.querySelectorAll('.object-card.connected').length;
+  const roundComplete = connectedThisRound === PAIRS_PER_ROUND;
+
+  if (roundComplete) {
+    roundLocked = true;
     starsEarned++;
     updateStars();
   }
+
   updateProgress();
+  if (roundComplete) currentRound++;
   Sounds.correct();
-  setTimeout(() => Sounds.speak(`${letterElement.dataset.initial} de ${objectElement.dataset.label}`), 140);
-  updateStatus(`Muito bem! ${objectElement.dataset.label} começa com ${letterElement.dataset.initial}.`);
+  setTimeout(() => Sounds.speak(getMatchPhrase(letter, label)), 140);
+  updateStatus(`${randomPraise()} ${label} começa com ${letter}.`);
   spawnParticles(objectElement);
 
-  const connectedThisRound = objectsColumn.querySelectorAll('.object-card.connected').length;
-  if (connectedThisRound === PAIRS_PER_ROUND) {
-    roundLocked = true;
-    currentRound++;
+  if (roundComplete) {
+    const completionMessage = pickRandom(ROUND_COMPLETIONS);
+    gameTitle.textContent = completionMessage;
+    updateStatus(completionMessage);
     scheduleNextRound();
   }
 }
@@ -386,7 +646,7 @@ function rejectGesture(letterElement, target) {
   activePath.classList.add('error-path');
   letterElement.classList.add('wrong-choice');
   target?.classList.add('wrong-choice');
-  updateStatus('Quase! Tente ligar à figura que começa com essa letra.');
+  updateStatus(randomEncouragement());
   setTimeout(() => {
     activePath.setAttribute('d', '');
     activePath.classList.remove('error-path');
@@ -397,16 +657,19 @@ function rejectGesture(letterElement, target) {
 
 function spawnParticles(element) {
   const rect = element.getBoundingClientRect();
-  for (let index = 0; index < 8; index++) {
+  const total = 6 + Math.floor(Math.random() * 5);
+
+  for (let index = 0; index < total; index++) {
     const particle = document.createElement('span');
     particle.className = 'particle';
-    particle.textContent = ['✨', '⭐', '🎈'][index % 3];
+    particle.textContent = pickRandom(PARTICLE_EMOJIS);
     particle.style.left = `${rect.left + rect.width / 2}px`;
     particle.style.top = `${rect.top + rect.height / 2}px`;
-    particle.style.setProperty('--x', `${(Math.random() - 0.5) * 160}px`);
-    particle.style.setProperty('--y', `${(Math.random() - 0.5) * 160}px`);
+    particle.style.setProperty('--x', `${(Math.random() - 0.5) * 180}px`);
+    particle.style.setProperty('--y', `${(Math.random() - 0.5) * 180}px`);
+    particle.style.animationDelay = `${Math.floor(Math.random() * 100)}ms`;
     document.body.appendChild(particle);
-    setTimeout(() => particle.remove(), 800);
+    setTimeout(() => particle.remove(), 950);
   }
 }
 
@@ -418,7 +681,10 @@ function resetGame() {
   completedConnections = 0;
   starsEarned = 0;
   roundLocked = false;
-  updateProgress();
+  letterBag = [];
+  exampleBags.clear();
+  lastPraise = '';
+  lastEncouragement = '';
   updateStars();
   renderRound();
 }
@@ -453,6 +719,7 @@ function init() {
   objectsColumn = document.getElementById('objectsColumn');
   connectionsSvg = document.getElementById('connectionsSvg');
   activePath = document.getElementById('activePath');
+  gameTitle = document.getElementById('gameTitle');
   gameStatus = document.getElementById('gameStatus');
   progressFill = document.getElementById('progressFill');
   progressLabel = document.getElementById('progressLabel');
