@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Formas Geométricas — KanAcademy</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/games-style.css">
+</head>
+<body class="page-formas">
+
+<div class="topbar">
+  <a href="../index.html" class="back-link">⬅ Voltar</a>
+  <button id="diffToggle" class="diff-btn" onclick="toggleDiff()">Fácil</button>
+  <div class="topbar-spacer"></div>
+  <button class="sound-toggle" id="soundToggle" aria-label="Desligar narração" title="Desligar narração" onclick="toggleSound()">🔊</button>
+</div>
+
+<div class="board-wrap">
+  <div class="challenge-card">
+    <div class="target-shape-wrap" id="targetShapeWrap"></div>
+    <div class="challenge-title" id="challengeTitle">Círculo</div>
+  </div>
+
+  <div class="options-container" id="optionsContainer"></div>
+</div>
+
+<div class="botbar">
+  <div class="progress-wrap">
+    <span class="progress-label" id="progressLabel">0 / 10</span>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+  </div>
+</div>
+
+<div class="win-overlay" id="winOverlay">
+  <div class="win-box">
+    <div style="font-size: 80px; margin-bottom: 10px;">🏆</div>
+    <h2>Você conhece as formas!</h2>
+    <button class="win-btn" onclick="initGame()">Jogar Novamente</button>
+  </div>
+</div>
+
+<script>
+/* ── AUDIO ENGINE ── */
+let soundEnabled = true;
+let voiceEnabled = true;
+let audioCtx = null;
+
+function playTone(freq, dur, type) {
+  if (!soundEnabled) return;
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  var osc = audioCtx.createOscillator();
+  var gain = audioCtx.createGain();
+  osc.connect(gain); gain.connect(audioCtx.destination);
+  osc.type = type || 'sine'; osc.frequency.value = freq;
+  gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + dur);
+  osc.start(); osc.stop(audioCtx.currentTime + dur);
+}
+
+var Sounds = {
+  correct: function() { playTone(600, 0.1); setTimeout(function() { playTone(800, 0.2); }, 100); },
+  wrong: function() { playTone(300, 0.2, 'triangle'); setTimeout(function() { playTone(250, 0.3, 'triangle'); }, 150); },
+  win: function() { [523, 659, 783, 1046].forEach(function(f, i) { setTimeout(function() { playTone(f, 0.3); }, i * 150); }); },
+  speak: function(text) {
+    if (!voiceEnabled) return;
+    window.speechSynthesis.cancel();
+    var u = new SpeechSynthesisUtterance(text);
+    u.lang = 'pt-BR'; u.rate = 1.0; u.pitch = 1.2; u.volume = 1;
+    window.speechSynthesis.speak(u);
+  }
+};
+
+function toggleSound() {
+  voiceEnabled = !voiceEnabled;
+  if (!voiceEnabled && window.speechSynthesis) {
+    window.speechSynthesis.cancel();
+  }
+  var btn = document.getElementById('soundToggle');
+  btn.textContent = voiceEnabled ? '🔊' : '🔇';
+  btn.setAttribute('aria-label', voiceEnabled ? 'Desligar narração' : 'Ligar narração');
+  btn.setAttribute('title', voiceEnabled ? 'Desligar narração' : 'Ligar narração');
+  btn.classList.toggle('muted', !voiceEnabled);
+}
+
+/* ── SHAPE DATA ── */
+var SHAPES_ALL = [
+  { id: 'circulo',   name: 'Círculo',    color: '#ff6b6b' },
+  { id: 'quadrado',  name: 'Quadrado',   color: '#4ecdc4' },
+  { id: 'triangulo', name: 'Triângulo',  color: '#ffe66d' },
+  { id: 'retangulo', name: 'Retângulo',  color: '#a8e6cf' },
+  { id: 'estrela',   name: 'Estrela',    color: '#ff9ff3' },
+  { id: 'coracao',   name: 'Coração',    color: '#ee5a24' },
+  { id: 'losango',   name: 'Losango',    color: '#54a0ff' },
+  { id: 'hexagono',  name: 'Hexágono',   color: '#5f27cd' }
+];
+
+var LEVELS = [
+  { id: 'facil',   name: 'Fácil',   count: 4 },
+  { id: 'medio',   name: 'Médio',   count: 6 },
+  { id: 'dificil', name: 'Difícil', count: 8 }
+];
+
+var currentLevelIdx = 0;
+var score = 0;
+var TOTAL_ROUNDS = 10;
+var isLocked = false;
+var usedTargets = [];
+
+function toggleDiff() {
+  currentLevelIdx = (currentLevelIdx + 1) % LEVELS.length;
+  document.getElementById('diffToggle').textContent = LEVELS[currentLevelIdx].name;
+  initGame();
+}
+
+function getShapes() {
+  return SHAPES_ALL.slice(0, LEVELS[currentLevelIdx].count);
+}
+
+/* ── SHAPE RENDERING ── */
+function applyShapeStyle(el, shape, size) {
+  var w = (shape.id === 'retangulo') ? Math.round(size * 1.4) : size;
+  var h = (shape.id === 'retangulo') ? Math.round(size * 0.75) : size;
+  el.style.width = w + 'px';
+  el.style.height = h + 'px';
+  el.style.backgroundColor = shape.color;
+
+  switch (shape.id) {
+    case 'circulo':
+      el.style.borderRadius = '50%';
+      break;
+    case 'quadrado':
+      el.style.borderRadius = '14px';
+      break;
+    case 'retangulo':
+      el.style.borderRadius = '14px';
+      break;
+    case 'triangulo':
+      el.style.clipPath = 'polygon(50% 5%, 5% 95%, 95% 95%)';
+      break;
+    case 'estrela':
+      el.style.clipPath = 'polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)';
+      break;
+    case 'coracao':
+      el.style.clipPath = 'polygon(50% 100%, 0% 38%, 0% 20%, 15% 0%, 35% 0%, 50% 18%, 65% 0%, 85% 0%, 100% 20%, 100% 38%)';
+      break;
+    case 'losango':
+      el.style.clipPath = 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)';
+      break;
+    case 'hexagono':
+      el.style.clipPath = 'polygon(25% 5%, 75% 5%, 100% 50%, 75% 95%, 25% 95%, 0% 50%)';
+      break;
+  }
+}
+
+/* ── GAME LOGIC ── */
+function initGame() {
+  score = 0;
+  isLocked = false;
+  usedTargets = [];
+  document.getElementById('winOverlay').classList.remove('show');
+  updateProgress();
+  nextRound();
+}
+
+function nextRound() {
+  if (score >= TOTAL_ROUNDS) {
+    Sounds.win();
+    document.getElementById('winOverlay').classList.add('show');
+    spawnParticles();
+    return;
+  }
+
+  isLocked = false;
+  var shapes = getShapes();
+
+  /* Pick a target, avoid repeating the same shape twice in a row */
+  var available = shapes.filter(function(s) { return usedTargets[usedTargets.length - 1] !== s.id; });
+  if (available.length === 0) available = shapes;
+  var target = available[Math.floor(Math.random() * available.length)];
+  usedTargets.push(target.id);
+
+  /* Render target shape */
+  var targetWrap = document.getElementById('targetShapeWrap');
+  targetWrap.innerHTML = '';
+  var targetEl = document.createElement('div');
+  targetEl.className = 'target-shape-visual';
+  applyShapeStyle(targetEl, target, 110);
+  targetWrap.appendChild(targetEl);
+  document.getElementById('challengeTitle').textContent = target.name;
+
+  /* Narrate */
+  Sounds.speak('Toque no ' + target.name);
+
+  /* Build options: 1 correct + 3 wrong */
+  var wrongPool = shapes.filter(function(s) { return s.id !== target.id; });
+  wrongPool.sort(function() { return Math.random() - 0.5; });
+  var wrongs = wrongPool.slice(0, Math.min(3, wrongPool.length));
+  var options = [target].concat(wrongs).sort(function() { return Math.random() - 0.5; });
+
+  /* If fewer than 4 shapes available, pad (shouldn't happen with 4+ shapes) */
+  while (options.length < 4 && shapes.length > options.length) {
+    var extra = shapes[Math.floor(Math.random() * shapes.length)];
+    if (options.indexOf(extra) === -1) options.push(extra);
+  }
+
+  var container = document.getElementById('optionsContainer');
+  container.innerHTML = '';
+
+  options.forEach(function(shape) {
+    var btn = document.createElement('button');
+    btn.className = 'shape-opt-btn';
+    btn.dataset.shapeId = shape.id;
+
+    var inner = document.createElement('div');
+    inner.className = 'shape-opt-inner';
+    applyShapeStyle(inner, shape, 80);
+    btn.appendChild(inner);
+
+    btn.addEventListener('click', function() {
+      handleAnswer(shape.id, target.id, btn);
+    });
+    container.appendChild(btn);
+  });
+}
+
+function handleAnswer(selectedId, targetId, btn) {
+  if (isLocked) return;
+
+  if (selectedId === targetId) {
+    isLocked = true;
+    Sounds.correct();
+    btn.classList.add('correct');
+
+    /* Narrate the shape name as reinforcement */
+    var shapeName = SHAPES_ALL.find(function(s) { return s.id === targetId; }).name;
+    setTimeout(function() { Sounds.speak(shapeName + '! Muito bem!'); }, 150);
+
+    score++;
+    updateProgress();
+    setTimeout(nextRound, 1000);
+  } else {
+    Sounds.wrong();
+    btn.classList.add('wrong');
+    setTimeout(function() { btn.classList.remove('wrong'); }, 500);
+  }
+}
+
+function updateProgress() {
+  var pct = (score / TOTAL_ROUNDS) * 100;
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressLabel').textContent = score + ' / ' + TOTAL_ROUNDS;
+}
+
+function spawnParticles() {
+  for (var i = 0; i < 20; i++) {
+    var el = document.createElement('div');
+    el.className = 'particle';
+    el.textContent = ['✨', '⭐', '🌟', '🎉', '💫', '🎈'][Math.floor(Math.random() * 6)];
+    var dx = (Math.random() - 0.5) * 500;
+    var dy = (Math.random() - 0.5) * 500;
+    var rot = (Math.random() - 0.5) * 720 + 'deg';
+    el.style.cssText = 'left:50%;top:50%;--dest:translate(' + dx + 'px,' + dy + 'px);--rot:' + rot + ';animation-delay:' + (Math.random() * 300) + 'ms';
+    document.body.appendChild(el);
+    setTimeout(function() { el.remove(); }, 1500);
+  }
+}
+
+initGame();
+</script>
+
+</body>
+</html>

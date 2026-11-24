@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Alfabeto Divertido — KanAcademy</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/css/games-style.css">
+<script
+src="https://code.responsivevoice.org/responsivevoice.js?key=fmRHU1Pp"></script>
+
+</head>
+<body class="page-alfabeto">
+<div class="topbar">
+  <a href="../index.html" class="back-link">⬅ Voltar</a>
+  <div class="topbar-spacer"></div>
+  <button class="sound-toggle" id="soundToggle" type="button" aria-label="Desligar narração" title="Desligar narração" aria-pressed="true" onclick="toggleVoice()">🔊</button>
+</div>
+
+<main class="game-area">
+  <div class="display-box" id="displayBox">
+    <div class="display-letter" id="displayLetter">?</div>
+    <div class="display-info">
+      <div class="display-emoji" id="displayEmoji">✨</div>
+      <div class="display-word" id="displayWord">Toque!</div>
+    </div>
+  </div>
+
+  <div class="alphabet-grid" id="alphabetGrid"></div>
+</main>
+
+<script>
+  const alphabetData = [
+    { letter: 'A', examples: [
+      { word: 'Abelha', emoji: '🐝' },
+      { word: 'Avião', emoji: '✈️' },
+      { word: 'Aranha', emoji: '🕷️' }
+    ]},
+    { letter: 'B', examples: [
+      { word: 'Bola', emoji: '⚽' },
+      { word: 'Banana', emoji: '🍌' },
+      { word: 'Borboleta', emoji: '🦋' }
+    ]},
+    { letter: 'C', examples: [
+      { word: 'Cachorro', emoji: '🐶' },
+      { word: 'Casa', emoji: '🏠' },
+      { word: 'Coração', emoji: '❤️' }
+    ]},
+    { letter: 'D', examples: [
+      { word: 'Dado', emoji: '🎲' },
+      { word: 'Dinossauro', emoji: '🦖' },
+      { word: 'Diamante', emoji: '💎' }
+    ]},
+    { letter: 'E', examples: [
+      { word: 'Elefante', emoji: '🐘' },
+      { word: 'Estrela', emoji: '⭐' },
+      { word: 'Escova', emoji: '🪥' }
+    ]},
+    { letter: 'F', examples: [
+      { word: 'Foguete', emoji: '🚀' },
+      { word: 'Flor', emoji: '🌸' },
+      { word: 'Foca', emoji: '🦭' }
+    ]},
+    { letter: 'G', examples: [
+      { word: 'Gato', emoji: '🐱' },
+      { word: 'Girafa', emoji: '🦒' },
+      { word: 'Guitarra', emoji: '🎸' }
+    ]},
+    { letter: 'H', examples: [
+      { word: 'Helicóptero', emoji: '🚁' },
+      { word: 'Hospital', emoji: '🏥' },
+      { word: 'Hambúrguer', emoji: '🍔' }
+    ]},
+    { letter: 'I', examples: [
+      { word: 'Ilha', emoji: '🏝️' },
+      { word: 'Iguana', emoji: '🦎' },
+      { word: 'Iogurte', emoji: '🍦' }
+    ]},
+    { letter: 'J', examples: [
+      { word: 'Jacaré', emoji: '🐊' },
+      { word: 'Janela', emoji: '🪟' },
+      { word: 'Joaninha', emoji: '🐞' }
+    ]},
+    { letter: 'K', examples: [
+      { word: 'Kiwi', emoji: '🥝' },
+      { word: 'Karaokê', emoji: '🎤' },
+      { word: 'Kart', emoji: '🏎️' }
+    ]},
+    { letter: 'L', examples: [
+      { word: 'Leão', emoji: '🦁' },
+      { word: 'Lua', emoji: '🌙' },
+      { word: 'Lápis', emoji: '✏️' }
+    ]},
+    { letter: 'M', examples: [
+      { word: 'Macaco', emoji: '🐵' },
+      { word: 'Maçã', emoji: '🍎' },
+      { word: 'Moto', emoji: '🏍️' }
+    ]},
+    { letter: 'N', examples: [
+      { word: 'Nuvem', emoji: '☁️' },
+      { word: 'Navio', emoji: '🚢' },
+      { word: 'Nariz', emoji: '👃' }
+    ]},
+    { letter: 'O', examples: [
+      { word: 'Ovelha', emoji: '🐑' },
+      { word: 'Ovo', emoji: '🥚' },
+      { word: 'Óculos', emoji: '👓' }
+    ]},
+    { letter: 'P', examples: [
+      { word: 'Pato', emoji: '🦆' },
+      { word: 'Pipoca', emoji: '🍿' },
+      { word: 'Peixe', emoji: '🐟' }
+    ]},
+    { letter: 'Q', examples: [
+      { word: 'Queijo', emoji: '🧀' },
+      { word: 'Quadro', emoji: '🖼️' },
+      { word: 'Quati', emoji: '🦝' }
+    ]},
+    { letter: 'R', examples: [
+      { word: 'Robô', emoji: '🤖' },
+      { word: 'Rato', emoji: '🐭' },
+      { word: 'Relógio', emoji: '⏰' }
+    ]},
+    { letter: 'S', examples: [
+      { word: 'Sapo', emoji: '🐸' },
+      { word: 'Sol', emoji: '☀️' },
+      { word: 'Sorvete', emoji: '🍨' }
+    ]},
+    { letter: 'T', examples: [
+      { word: 'Trem', emoji: '🚆' },
+      { word: 'Tigre', emoji: '🐯' },
+      { word: 'Telefone', emoji: '📞' }
+    ]},
+    { letter: 'U', examples: [
+      { word: 'Uva', emoji: '🍇' },
+      { word: 'Urso', emoji: '🐻' },
+      { word: 'Unicórnio', emoji: '🦄' }
+    ]},
+    { letter: 'V', examples: [
+      { word: 'Vaca', emoji: '🐮' },
+      { word: 'Violão', emoji: '🎸' },
+      { word: 'Vela', emoji: '🕯️' }
+    ]},
+    { letter: 'W', examples: [
+      { word: 'Wafer', emoji: '🧇' },
+      { word: 'Web', emoji: '🌐' },
+      { word: 'Walkie-talkie', emoji: '📻' }
+    ]},
+    { letter: 'X', examples: [
+      { word: 'Xícara', emoji: '☕' },
+      { word: 'Xadrez', emoji: '♟️' },
+      { word: 'Xilofone', emoji: '🎼' }
+    ]},
+    { letter: 'Y', examples: [
+      { word: 'Yin Yang', emoji: '☯️' },
+      { word: 'Yoga', emoji: '🧘' },
+      { word: 'Yakult', emoji: '🥤' }
+    ]},
+    { letter: 'Z', examples: [
+      { word: 'Zebra', emoji: '🦓' },
+      { word: 'Zíper', emoji: '🤐' },
+      { word: 'Zangão', emoji: '🐝' }
+    ]}
+  ];
+
+
+
+  const gridContainer = document.getElementById('alphabetGrid');
+  const displayBox = document.getElementById('displayBox');
+  const displayLetter = document.getElementById('displayLetter');
+  const displayEmoji = document.getElementById('displayEmoji');
+  const displayWord = document.getElementById('displayWord');
+  
+  let currentActiveBtn = null;
+  const exampleIndexByLetter = {};
+
+  const AudioEngine = {
+    voiceEnabled: true,
+
+    speak: function(letter, word) {
+      if (!this.voiceEnabled) return;
+
+      const phrase = `Letra ${letter}. ${letter} de ${word}.`;
+      const hasNativeSpeech = window.speechSynthesis &&
+        window.SpeechSynthesisUtterance;
+
+      if (hasNativeSpeech) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(phrase);
+        utterance.lang = 'pt-BR';
+        utterance.rate = 0.88;
+        utterance.pitch = 1;
+
+        const voices = window.speechSynthesis.getVoices();
+        const portugueseVoice = voices.find(voice =>
+          voice.lang.toLowerCase() === 'pt-br'
+        ) || voices.find(voice =>
+          voice.lang.toLowerCase().startsWith('pt')
+        );
+        if (portugueseVoice) utterance.voice = portugueseVoice;
+
+        window.speechSynthesis.speak(utterance);
+        return;
+      }
+
+      if (window.responsiveVoice) {
+        responsiveVoice.speak(phrase, "Brazilian Portuguese Male", {
+          rate: 0.88,
+          pitch: 1,
+          volume: 1
+        });
+      }
+    }
+  };
+
+  function toggleVoice() {
+    AudioEngine.voiceEnabled = !AudioEngine.voiceEnabled;
+
+    if (!AudioEngine.voiceEnabled) {
+      if (window.speechSynthesis) window.speechSynthesis.cancel();
+      if (window.responsiveVoice) responsiveVoice.cancel();
+    }
+
+    const button = document.getElementById('soundToggle');
+    const label = AudioEngine.voiceEnabled ? 'Desligar narração' : 'Ligar narração';
+    button.textContent = AudioEngine.voiceEnabled ? '🔊' : '🔇';
+    button.setAttribute('aria-label', label);
+    button.setAttribute('title', label);
+    button.setAttribute('aria-pressed', String(AudioEngine.voiceEnabled));
+    button.classList.toggle('muted', !AudioEngine.voiceEnabled);
+  }
+
+  function initGame() {
+    alphabetData.forEach(item => {
+      exampleIndexByLetter[item.letter] = 0;
+      const btn = document.createElement('button');
+      btn.className = 'letter-btn';
+      btn.textContent = item.letter;
+      btn.addEventListener('click', (e) => handleLetterClick(item, btn, e));
+      gridContainer.appendChild(btn);
+    });
+  }
+
+  function handleLetterClick(data, btnElement, event) {
+    if (currentActiveBtn) currentActiveBtn.classList.remove('active');
+    btnElement.classList.add('active');
+    currentActiveBtn = btnElement;
+
+    const currentIndex = exampleIndexByLetter[data.letter];
+    const example = data.examples[currentIndex];
+    exampleIndexByLetter[data.letter] = (currentIndex + 1) % data.examples.length;
+
+    // Atualiza interface
+    displayLetter.textContent = data.letter;
+    displayEmoji.textContent = example.emoji;
+    displayWord.textContent = example.word;
+
+    // Reinicia animação
+    displayBox.classList.remove('pop');
+    void displayBox.offsetWidth;
+    displayBox.classList.add('pop');
+
+    // Narração aprimorada
+    AudioEngine.speak(data.letter, example.word);
+
+    // Partículas
+    const rect = btnElement.getBoundingClientRect();
+    spawnParticles(rect.left + rect.width / 2, rect.top + rect.height / 2, example.emoji);
+  }
+
+  function spawnParticles(x, y, emoji) {
+    const emojis = [emoji, '✨', '⭐'];
+    for (let i = 0; i < 6; i++) {
+      const el = document.createElement('div');
+      el.className = 'particle';
+      el.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+      el.style.left = x + 'px';
+      el.style.top = y + 'px';
+      el.style.setProperty('--tx', (Math.random() - 0.5) * 150 + 'px');
+      el.style.setProperty('--ty', (Math.random() - 0.5) * 150 + 'px');
+      el.style.setProperty('--rot', (Math.random() - 0.5) * 360 + 'deg');
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 800);
+    }
+  }
+
+  window.onload = initGame;
+</script>
+</body>
+</html>

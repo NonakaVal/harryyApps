@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Encontre os Pares — KanAcademy</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/css/games-style.css">
+</head>
+<body class="page-memory-game">
+
+<div class="topbar">
+  <a href="../index.html" class="back-link">⬅ Voltar</a>
+  <div class="topbar-spacer"></div>
+  <div class="timer-wrap">
+    <span class="timer-icon">⏱</span>
+    <span class="timer-display" id="timerDisplay">0:00</span>
+  </div>
+  <button class="sound-toggle" id="soundToggle" onclick="toggleSound()" title="Ligar/Desligar sons">🔊</button>
+</div>
+
+<div class="board-wrap">
+  <div class="toast"       id="toast">Muito Bem!</div>
+  <div class="combo-toast" id="comboToast">🔥 Combo!</div>
+  <div id="board"></div>
+</div>
+
+<div class="botbar">
+  <button class="reset-btn" onclick="resetGame()">🔄 Recomeçar</button>
+
+  <div class="botbar-center">
+    <div class="progress-wrap">
+      <span class="progress-label" id="progressLabel">0 / 0 pares</span>
+      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    </div>
+  </div>
+
+  <div class="moves-wrapper">
+    <span class="moves-label">Jogadas:</span>
+    <div class="moves-box" id="movesDisplay">0</div>
+  </div>
+</div>
+
+<div class="win-overlay" id="winOverlay">
+  <div class="win-box">
+    <div class="trophy">🏆</div>
+    <h2>Você Conseguiu!</h2>
+    <p class="win-sub" id="winSub">Incrível desempenho!</p>
+
+    <div class="stars-rating">
+      <span class="star-el" id="star1">⭐</span>
+      <span class="star-el" id="star2">⭐</span>
+      <span class="star-el" id="star3">⭐</span>
+    </div>
+
+    <div class="win-stats">
+      <div class="win-stat">
+        <div class="win-stat-val" id="winMoves">0</div>
+        <div class="win-stat-label">Jogadas</div>
+      </div>
+      <div class="win-stat">
+        <div class="win-stat-val" id="winTime">0:00</div>
+        <div class="win-stat-label">Tempo</div>
+      </div>
+    </div>
+
+    <button class="win-btn" onclick="nextDiff()">🌟 Próximo Desafio</button>
+  </div>
+</div>
+
+<script>
+// ── AUDIO ENGINE ──
+let soundEnabled = true;
+let audioContext = null;
+
+function initAudio() {
+  if (!audioContext) {
+    try {
+      window.AudioContext = window.AudioContext || window.webkitAudioContext;
+      audioContext = new AudioContext();
+    } catch (e) {
+      console.log('Web Audio not supported');
+      return false;
+    }
+  }
+  return true;
+}
+
+function playTone(freq, duration, type = 'sine', volume = 0.3) {
+  if (!soundEnabled || !initAudio()) return;
+  
+  const osc = audioContext.createOscillator();
+  const gain = audioContext.createGain();
+  
+  osc.connect(gain);
+  gain.connect(audioContext.destination);
+  
+  osc.type = type;
+  osc.frequency.value = freq;
+  gain.gain.setValueAtTime(volume, audioContext.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+  
+  osc.start(audioContext.currentTime);
+  osc.stop(audioContext.currentTime + duration);
+}
+
+// Sound effects
+const Sounds = {
+  flip: () => {
+    playTone(600, 0.1, 'sine', 0.2);
+    playTone(800, 0.08, 'sine', 0.15);
+  },
+  match: () => {
+    playTone(800, 0.1, 'sine', 0.25);
+    playTone(1000, 0.15, 'sine', 0.25);
+  },
+  error: () => {
+    playTone(300, 0.15, 'sine', 0.25);
+    playTone(250, 0.2, 'sine', 0.2);
+  },
+  combo: () => {
+    playTone(540, 0.08, 'sine', 0.2);
+    setTimeout(() => playTone(720, 0.08, 'sine', 0.2), 80);
+  },
+  win: () => {
+    const notes = [523.25, 659.25, 783.99, 1046.5];
+    notes.forEach((freq, i) => {
+      setTimeout(() => playTone(freq, 0.3, 'sine', 0.25), i * 150);
+    });
+  }
+};
+
+function toggleSound() {
+  soundEnabled = !soundEnabled;
+  const btn = document.getElementById('soundToggle');
+  if (soundEnabled) {
+    btn.textContent = '🔊';
+    btn.classList.remove('muted');
+  } else {
+    btn.textContent = '🔇';
+    btn.classList.add('muted');
+  }
+}
+
+// ── DATA ──
+const CHARS = [
+  { id:1, img:'../assets/cards/chase.svg', bg:'#1a6cbf' },
+  { id:2, img:'../assets/cards/marshall.svg', bg:'#e63946' },
+  { id:3, img:'../assets/cards/rubble.svg', bg:'#f4a228' },
+  { id:4, img:'../assets/cards/rocky.svg', bg:'#4caf50' },
+  { id:5, img:'../assets/cards/everest.svg', bg:'#9c27b0' },
+  { id:6, img:'../assets/cards/skye.svg', bg:'#ff69b4' },
+  { id:7, img:'../assets/cards/tracker.svg', bg:'#e65c00' },
+  { id:8, img:'../assets/cards/zuma.svg', bg:'#ff7043' },
+];
+
+function cardFaceContent(tile) {
+  if (tile.img) {
+    return `<img class="card-img" src="${tile.img}" alt="carta ${tile.id}" draggable="false" onerror="this.outerHTML='<span class=\\'emoji\\'>🐶</span>'">`;
+  }
+  return `<span class="emoji">${tile.emoji}</span>`;
+}
+
+const FEEDBACK = ['Uau! 🎉', 'Isso aí! 💪', 'Incrível! 🌟', 'Perfeito! ✨', 'Show! 🔥'];
+const COMBOS   = ['🔥 2x Combo!', '⚡ 3x Combo!', '💥 4x Combo!', '🌟 MEGA COMBO!'];
+const LEVELS = {
+  easy:   { pairs: 2, cols: 2, time: 90,  starLimits: [12, 8, 5]  },
+  medium: { pairs: 4, cols: 4, time: 120, starLimits: [25, 16, 10] },
+  hard:   { pairs: 8, cols: 4, time: 180, starLimits: [40, 28, 18] }
+};
+const ORDER = ['easy','medium','hard'];
+
+// ── STATE ──
+let diff = 'easy';
+let deck = [], flipped = [], matched = [];
+let moves = 0, locked = false, consecutiveMisses = 0, combo = 0;
+let timerInterval = null, elapsed = 0;
+
+// ── UTILS ──
+const shuffle = a => {
+  const b = [...a];
+  for (let i = b.length-1; i > 0; i--) {
+    const j = Math.floor(Math.random()*(i+1));
+    [b[i],b[j]] = [b[j],b[i]];
+  }
+  return b;
+};
+
+const gc = idx => document.querySelector(`[data-idx="${idx}"]`);
+
+const fmt = s => `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+
+// ── TIMER ──
+function startTimer() {
+  clearInterval(timerInterval);
+  elapsed = 0;
+  const display = document.getElementById('timerDisplay');
+  display.classList.remove('warning');
+  display.textContent = '0:00';
+  const limit = LEVELS[diff].time;
+
+  timerInterval = setInterval(() => {
+    elapsed++;
+    display.textContent = fmt(elapsed);
+    const remaining = limit - elapsed;
+    if (remaining <= 15 && remaining > 0) display.classList.add('warning');
+    else display.classList.remove('warning');
+  }, 1000);
+}
+function stopTimer() { clearInterval(timerInterval); }
+
+// ── DECK BUILD ──
+function buildDeck(pairs) {
+  if (pairs > CHARS.length) {
+    pairs = CHARS.length;
+  }
+  const chars = shuffle([...CHARS]).slice(0, pairs);
+  const tiles = [];
+  chars.forEach(c => {
+    tiles.push({...c, uid: c.id*100+1});
+    tiles.push({...c, uid: c.id*100+2});
+  });
+  return shuffle(tiles);
+}
+
+// ── RESET ──
+function resetGame() {
+  const { pairs, cols } = LEVELS[diff];
+  deck = buildDeck(pairs);
+  flipped = []; matched = []; moves = 0; consecutiveMisses = 0; combo = 0; locked = false;
+
+  document.getElementById('movesDisplay').textContent = '0';
+  updateProgress();
+  closeWin();
+  startTimer();
+  renderBoard(cols);
+}
+
+// ── PROGRESS ──
+function updateProgress() {
+  const { pairs } = LEVELS[diff];
+  const pct = (matched.length / pairs) * 100;
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressLabel').textContent = `${matched.length} / ${pairs} pares`;
+}
+
+// ── BOARD ──
+function renderBoard(cols) {
+  const board = document.getElementById('board');
+  board.innerHTML = '';
+  const rows = Math.ceil(deck.length / cols);
+  const wrap = document.querySelector('.board-wrap');
+  
+  const isMobile = window.innerWidth <= 600;
+  const GAP = isMobile ? 8 : 14; 
+  const pad = isMobile ? 16 : 32; 
+
+  const pw = wrap.clientWidth - pad;
+  const ph = wrap.clientHeight - pad;
+
+  const byCW = Math.floor((pw - GAP*(cols-1)) / cols);
+  const byCH = Math.floor((ph - GAP*(rows-1)) / rows);
+  
+  // Ajuste para não forçar as cartas a ficarem pequenas demais. 
+  // O Math.min garante que caibam perfeitamente na tela.
+  const cs = Math.max(45, Math.min(byCW, byCH, 200));
+
+  board.style.setProperty('--cs', cs + 'px');
+  board.style.gridTemplateColumns = `repeat(${cols}, ${cs}px)`;
+  board.style.gridTemplateRows = `repeat(${rows}, ${cs}px)`;
+  board.style.gap = GAP + 'px';
+
+  deck.forEach((tile, idx) => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.dataset.idx = idx;
+    card.dataset.id  = tile.id;
+    card.style.cssText = `width:${cs}px;height:${cs}px;animation-delay:${idx * 40}ms`;
+    card.innerHTML = `
+      <div class="card-inner">
+        <div class="card-face card-back"></div>
+        <div class="card-face card-front" style="background:${tile.bg}">
+          ${cardFaceContent(tile)}
+        </div>
+      </div>`;
+    card.addEventListener('click', () => flip(card, idx));
+    board.appendChild(card);
+  });
+}
+
+// ── FLIP ──
+function flip(card, idx) {
+  if (locked || flipped.includes(idx) || matched.includes(deck[idx].id) || flipped.length >= 2) return;
+  document.querySelectorAll('.hint-wiggle').forEach(c => c.classList.remove('hint-wiggle'));
+  Sounds.flip();
+  card.classList.add('flipped');
+  flipped.push(idx);
+
+  if (flipped.length === 2) {
+    moves++;
+    const mb = document.getElementById('movesDisplay');
+    mb.textContent = moves;
+    mb.classList.remove('bump');
+    void mb.offsetWidth;
+    mb.classList.add('bump');
+    locked = true;
+    checkMatch();
+  }
+}
+
+// ── MATCH CHECK ──
+function checkMatch() {
+  const [a, b] = flipped;
+  if (deck[a].id === deck[b].id) {
+    Sounds.match();
+    matched.push(deck[a].id);
+    combo++;
+    consecutiveMisses = 0;
+
+    setTimeout(() => {
+      gc(a).classList.add('matched');
+      gc(b).classList.add('matched');
+
+      // Toast
+      const t = document.getElementById('toast');
+      t.textContent = FEEDBACK[Math.floor(Math.random() * FEEDBACK.length)];
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 1300);
+
+      // Combo toast
+      if (combo >= 2) {
+        Sounds.combo();
+        const ct = document.getElementById('comboToast');
+        ct.textContent = COMBOS[Math.min(combo-2, COMBOS.length-1)];
+        ct.classList.add('show');
+        setTimeout(() => ct.classList.remove('show'), 1500);
+      }
+
+      updateProgress();
+      flipped = []; locked = false;
+
+      if (matched.length === LEVELS[diff].pairs) setTimeout(showWin, 600);
+    }, 280);
+
+  } else {
+    Sounds.error();
+    combo = 0;
+    consecutiveMisses++;
+
+    // Shake both cards
+    [a, b].forEach(idx => {
+      const c = gc(idx);
+      c.classList.add('error');
+      setTimeout(() => c.classList.remove('error'), 600);
+    });
+
+    setTimeout(() => {
+      gc(a).classList.remove('flipped');
+      gc(b).classList.remove('flipped');
+      flipped = []; locked = false;
+
+      // Hint after 3 consecutive misses
+      if (consecutiveMisses >= 3) {
+        const hintId = deck.find(t => !matched.includes(t.id))?.id;
+        if (hintId) {
+          document.querySelectorAll(`[data-id="${hintId}"]`).forEach(c => c.classList.add('hint-wiggle'));
+        }
+        consecutiveMisses = 0;
+      }
+    }, 950);
+  }
+}
+
+// ── STARS ──
+function calcStars() {
+  const { starLimits } = LEVELS[diff];
+  if (moves <= starLimits[2]) return 3;
+  if (moves <= starLimits[1]) return 2;
+  if (moves <= starLimits[0]) return 1;
+  return 1;
+}
+
+// ── WIN ──
+function showWin() {
+  stopTimer();
+  Sounds.win();
+  const stars = calcStars();
+  const subs = ['Muito bom! Continue assim!', 'Ótimo desempenho! 💪', '🌟 Perfeito! Você é incrível!'];
+
+  document.getElementById('winMoves').textContent = moves;
+  document.getElementById('winTime').textContent  = fmt(elapsed);
+  document.getElementById('winSub').textContent   = subs[stars - 1];
+
+  // Reset stars
+  ['star1','star2','star3'].forEach(id => {
+    document.getElementById(id).classList.remove('lit');
+  });
+
+  document.getElementById('winOverlay').classList.add('show');
+
+  // Animate stars with delay
+  for (let i = 0; i < stars; i++) {
+    setTimeout(() => {
+      document.getElementById(`star${i+1}`).classList.add('lit');
+    }, 300 + i * 250);
+  }
+
+  // Particles
+  setTimeout(spawnParticles, 400);
+}
+
+function closeWin() {
+  document.getElementById('winOverlay').classList.remove('show');
+}
+
+function nextDiff() {
+  closeWin();
+  const i = ORDER.indexOf(diff);
+  diff = ORDER[i < ORDER.length-1 ? i+1 : 0];
+  resetGame();
+}
+
+// ── PARTICLES ──
+function spawnParticles() {
+  const emojis = ['⭐','🌟','🎉','✨','🎊','💫','🌈','🎈'];
+  const cx = window.innerWidth / 2;
+  const cy = window.innerHeight / 2;
+
+  for (let i = 0; i < 20; i++) {
+    const el = document.createElement('div');
+    el.className = 'particle';
+    el.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+    const dx = (Math.random() - 0.5) * 500;
+    const dy = (Math.random() - 0.5) * 500;
+    const rot = `${(Math.random()-0.5)*720}deg`;
+    el.style.cssText = `left:${cx}px;top:${cy}px;--dest:translate(${dx}px,${dy}px);--rot:${rot};animation-delay:${Math.random()*300}ms`;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 1800);
+  }
+}
+
+// ── INIT ──
+resetGame();
+
+let rTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(rTimer);
+  rTimer = setTimeout(() => renderBoard(LEVELS[diff].cols), 150);
+});
+</script>
+</body>
+</html>

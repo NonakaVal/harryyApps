@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Matemática Simples — KanAcademy</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/games-style.css">
+</head>
+<body class="page-matematica">
+
+<div class="topbar">
+  <a href="../index.html" class="back-link">⬅ Voltar</a>
+  <button id="diffToggle" class="diff-btn" onclick="toggleDiff()">Fácil (1-5)</button>
+  <div class="topbar-spacer"></div>
+  <button class="sound-toggle" id="soundToggle" aria-label="Desligar narração" title="Desligar narração" onclick="toggleSound()">🔊</button>
+</div>
+
+<div class="board-wrap">
+  <div class="operation-display" id="operationDisplay"></div>
+  <div class="options-container" id="optionsContainer"></div>
+</div>
+
+<div class="botbar">
+  <div class="progress-wrap">
+    <span class="progress-label" id="progressLabel">0 / 5 rodadas</span>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+  </div>
+</div>
+
+<div class="win-overlay" id="winOverlay">
+  <div class="win-box">
+    <div style="font-size: 80px; margin-bottom: 10px;">🏆</div>
+    <h2>Você é um gênio da matemática!</h2>
+    <button class="win-btn" onclick="initGame()">Jogar Novamente</button>
+  </div>
+</div>
+
+<script>
+/* ── AUDIO ENGINE ── */
+var soundEnabled = true;
+var voiceEnabled = true;
+var audioCtx = null;
+
+function playTone(freq, dur, type) {
+  if (!soundEnabled) return;
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  var osc = audioCtx.createOscillator();
+  var gain = audioCtx.createGain();
+  osc.connect(gain); gain.connect(audioCtx.destination);
+  osc.type = type || 'sine'; osc.frequency.value = freq;
+  gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + dur);
+  osc.start(); osc.stop(audioCtx.currentTime + dur);
+}
+
+var Sounds = {
+  correct: function() { playTone(600, 0.1); setTimeout(function() { playTone(800, 0.2); }, 100); },
+  wrong: function() { playTone(300, 0.2, 'triangle'); setTimeout(function() { playTone(250, 0.3, 'triangle'); }, 150); },
+  win: function() { [523, 659, 783, 1046].forEach(function(f, i) { setTimeout(function() { playTone(f, 0.3); }, i * 150); }); },
+  speak: function(text) {
+    if (!voiceEnabled) return;
+    window.speechSynthesis.cancel();
+    var u = new SpeechSynthesisUtterance(text);
+    u.lang = 'pt-BR'; u.rate = 1.0; u.pitch = 1.2; u.volume = 1;
+    window.speechSynthesis.speak(u);
+  }
+};
+
+function toggleSound() {
+  voiceEnabled = !voiceEnabled;
+  if (!voiceEnabled && window.speechSynthesis) {
+    window.speechSynthesis.cancel();
+  }
+  var btn = document.getElementById('soundToggle');
+  btn.textContent = voiceEnabled ? '🔊' : '🔇';
+  btn.setAttribute('aria-label', voiceEnabled ? 'Desligar narração' : 'Ligar narração');
+  btn.setAttribute('title', voiceEnabled ? 'Desligar narração' : 'Ligar narração');
+  btn.classList.toggle('muted', !voiceEnabled);
+}
+
+/* ── NUMBER WORDS ── */
+var NUM_WORDS = [
+  'zero', 'um', 'dois', 'três', 'quatro', 'cinco',
+  'seis', 'sete', 'oito', 'nove', 'dez'
+];
+
+/* ── EMOJIS ── */
+var ITEM_EMOJIS = [
+  '🍎', '🍌', '🍊', '🍇', '🍓', '🍒', '🍑', '🥝',
+  '🍕', '🍰', '🧁', '🍪', '🍬', '🍩', '🍫', '🍭',
+  '⭐', '🌟', '🎈', '🎁', '🎀', '🌺', '🌻', '🌈',
+  '🐶', '🐱', '🐸', '🦋', '🐝', '🐞', '🐢', '🐰'
+];
+
+/* ── LEVELS ── */
+var LEVELS = [
+  { id: 'facil',   name: 'Fácil (1-5)',     maxSum: 5,  allowSub: false },
+  { id: 'medio',   name: 'Médio (1-10)',    maxSum: 10, allowSub: true, maxSub: 5 },
+  { id: 'dificil', name: 'Difícil (1-10)',  maxSum: 10, allowSub: true, maxSub: 10 }
+];
+
+var currentLevelIdx = 0;
+var TOTAL_ROUNDS = 5;
+var currentRound = 0;
+var isLocked = false;
+
+function toggleDiff() {
+  currentLevelIdx = (currentLevelIdx + 1) % LEVELS.length;
+  document.getElementById('diffToggle').textContent = LEVELS[currentLevelIdx].name;
+  initGame();
+}
+
+/* ── OPERATION GENERATOR ── */
+function generateOperation() {
+  var level = LEVELS[currentLevelIdx];
+  var isSub = level.allowSub && Math.random() < 0.4;
+  var a, b, result;
+
+  if (isSub) {
+    b = Math.floor(Math.random() * (level.maxSub - 1)) + 1;
+    a = b + Math.floor(Math.random() * (level.maxSub - b)) + 1;
+    result = a - b;
+  } else {
+    result = Math.floor(Math.random() * (level.maxSum - 2)) + 2;
+    a = Math.floor(Math.random() * (result - 1)) + 1;
+    b = result - a;
+  }
+
+  return { a: a, b: b, op: isSub ? '-' : '+', result: result };
+}
+
+/* ── RENDER OPERATION ── */
+function renderOperation(op) {
+  var emoji = ITEM_EMOJIS[Math.floor(Math.random() * ITEM_EMOJIS.length)];
+  var display = document.getElementById('operationDisplay');
+  display.innerHTML = '';
+
+  /* Group 1: a items */
+  var group1 = document.createElement('div');
+  group1.className = 'emoji-group';
+  if (op.op === '-' && op.a > 5) {
+    for (var i = 0; i < op.a; i++) {
+      var span = document.createElement('span');
+      span.className = 'op-emoji' + (i >= op.b ? ' dimmed' : '');
+      span.textContent = emoji;
+      span.style.animationDelay = (i * 0.05) + 's';
+      group1.appendChild(span);
+    }
+  } else {
+    for (var i = 0; i < op.a; i++) {
+      var span = document.createElement('span');
+      span.className = 'op-emoji';
+      span.textContent = emoji;
+      span.style.animationDelay = (i * 0.05) + 's';
+      group1.appendChild(span);
+    }
+  }
+
+  /* Operator sign */
+  var opSign = document.createElement('div');
+  opSign.className = 'op-sign';
+  opSign.textContent = op.op === '+' ? '+' : '−';
+
+  /* Group 2: b items (only for addition; for subtraction, show b items being removed) */
+  var group2 = document.createElement('div');
+  group2.className = 'emoji-group';
+  if (op.op === '+') {
+    for (var i = 0; i < op.b; i++) {
+      var span = document.createElement('span');
+      span.className = 'op-emoji';
+      span.textContent = emoji;
+      span.style.animationDelay = (i * 0.05) + 's';
+      group2.appendChild(span);
+    }
+  } else {
+    /* Subtraction: show the b items that are taken away */
+    for (var i = 0; i < op.b; i++) {
+      var span = document.createElement('span');
+      span.className = 'op-emoji removed';
+      span.textContent = emoji;
+      span.style.animationDelay = (i * 0.05) + 's';
+      group2.appendChild(span);
+    }
+  }
+
+  /* Equals + question */
+  var equals = document.createElement('div');
+  equals.className = 'op-sign';
+  equals.textContent = '=';
+
+  var question = document.createElement('div');
+  question.className = 'op-result';
+  question.textContent = '?';
+
+  display.appendChild(group1);
+  display.appendChild(opSign);
+  display.appendChild(group2);
+  display.appendChild(equals);
+  display.appendChild(question);
+}
+
+/* ── GAME LOGIC ── */
+function initGame() {
+  currentRound = 0;
+  isLocked = false;
+  document.getElementById('winOverlay').classList.remove('show');
+  updateProgress();
+  nextRound();
+}
+
+function nextRound() {
+  if (currentRound >= TOTAL_ROUNDS) {
+    Sounds.win();
+    document.getElementById('winOverlay').classList.add('show');
+    spawnParticles();
+    return;
+  }
+
+  isLocked = false;
+  var op = generateOperation();
+
+  /* Render visual operation */
+  renderOperation(op);
+
+  /* Narrate */
+  var aWord = NUM_WORDS[op.a];
+  var bWord = NUM_WORDS[op.b];
+  var opWord = op.op === '+' ? 'mais' : 'menos';
+  Sounds.speak(aWord + ' ' + opWord + ' ' + bWord + ', igual a quanto?');
+
+  /* Generate options */
+  var options = new Set([op.result]);
+  while (options.size < 4) {
+    var offset = Math.floor(Math.random() * 5) - 2;
+    var wrong = op.result + offset;
+    if (wrong !== op.result && wrong >= 0 && wrong <= 10) options.add(wrong);
+  }
+
+  var optArr = Array.from(options).sort(function() { return Math.random() - 0.5; });
+
+  var container = document.getElementById('optionsContainer');
+  container.innerHTML = '';
+
+  optArr.forEach(function(num) {
+    var btn = document.createElement('button');
+    btn.className = 'opt-btn';
+    btn.textContent = num;
+    btn.addEventListener('click', function() {
+      handleAnswer(num, op.result, btn);
+    });
+    container.appendChild(btn);
+  });
+}
+
+function handleAnswer(num, correct, btn) {
+  if (isLocked) return;
+
+  if (num === correct) {
+    isLocked = true;
+    Sounds.correct();
+
+    var word = NUM_WORDS[correct];
+    setTimeout(function() { Sounds.speak(word + '! Muito bem!'); }, 150);
+
+    btn.classList.add('correct');
+    currentRound++;
+    updateProgress();
+    setTimeout(nextRound, 1000);
+  } else {
+    Sounds.wrong();
+    btn.classList.add('wrong');
+    setTimeout(function() { btn.classList.remove('wrong'); }, 500);
+  }
+}
+
+function updateProgress() {
+  var pct = (currentRound / TOTAL_ROUNDS) * 100;
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressLabel').textContent = currentRound + ' / ' + TOTAL_ROUNDS + ' rodadas';
+}
+
+function spawnParticles() {
+  for (var i = 0; i < 20; i++) {
+    var el = document.createElement('div');
+    el.className = 'particle';
+    el.textContent = ['✨', '⭐', '🌟', '🎉', '💫', '🎈'][Math.floor(Math.random() * 6)];
+    var dx = (Math.random() - 0.5) * 500;
+    var dy = (Math.random() - 0.5) * 500;
+    var rot = (Math.random() - 0.5) * 720 + 'deg';
+    el.style.cssText = 'left:50%;top:50%;--dest:translate(' + dx + 'px,' + dy + 'px);--rot:' + rot + ';animation-delay:' + (Math.random() * 300) + 'ms';
+    document.body.appendChild(el);
+    setTimeout(function() { el.remove(); }, 1500);
+  }
+}
+
+initGame();
+</script>
+
+</body>
+</html>

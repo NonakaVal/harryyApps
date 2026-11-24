@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Turma Animada — KanAcademy</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sakana-widget@2.7.1/lib/sakana.min.css" />
+
+<link rel="stylesheet" href="../assets/css/games-style.css">
+</head>
+
+<body class="page-turma">
+
+<div class="topbar">
+  <a href="../index.html" class="back-link">⬅ Voltar</a>
+</div>
+
+<main class="board-wrap">
+  <section class="widget-area">
+    <div id="sakana-widget"></div>
+  </section>
+
+  <div class="controls-row">
+    <button class="action-btn" onclick="trocarPersonagem()">
+      🎲 Trocar
+    </button>
+  </div>
+</main>
+
+<script>
+let widgetInstance = null;
+const TOTAL_IMAGENS = 5;
+let currentPetIndex = 1;
+
+function criarImagemComPadding(src, padding = 110) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+
+      canvas.width = img.width + padding * 2;
+      canvas.height = img.height + padding * 2;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, padding, padding);
+
+      resolve(canvas.toDataURL("image/sgv"));
+    };
+
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
+async function initSakanaWidget() {
+  await carregarPersonagem(currentPetIndex);
+}
+
+async function carregarPersonagem(index) {
+  const charName = `pcanina_${index}`;
+  const imagePath = `../assets/pcanina/${index}.png`;
+
+  const paddedImage = await criarImagemComPadding(imagePath, 110);
+  const baseChar = SakanaWidget.getCharacter("chisato");
+
+  const customChar = {
+    ...baseChar,
+    image: paddedImage,
+    initialState: {
+      ...baseChar.initialState,
+      x: 0,
+      y: 0,
+      r: 0
+    }
+  };
+
+  SakanaWidget.registerCharacter(charName, customChar);
+
+  const container = document.querySelector("#sakana-widget");
+  container.innerHTML = "";
+
+  widgetInstance = new SakanaWidget({
+    character: charName,
+    autoFit: true,
+    controls: false,
+
+    /* mantém o palito/apoio */
+    rod: true,
+
+    draggable: true,
+    stroke: {
+      color: "#ffffff",
+      width: 4
+    }
+  }).mount("#sakana-widget");
+}
+
+async function trocarPersonagem() {
+  let nextIndex;
+
+  do {
+    nextIndex = Math.floor(Math.random() * TOTAL_IMAGENS) + 1;
+  } while (nextIndex === currentPetIndex && TOTAL_IMAGENS > 1);
+
+  currentPetIndex = nextIndex;
+  await carregarPersonagem(currentPetIndex);
+}
+</script>
+
+<script
+  async
+  onload="initSakanaWidget()"
+  src="https://cdn.jsdelivr.net/npm/sakana-widget@2.7.1/lib/sakana.min.js">
+</script>
+
+</body>
+</html>

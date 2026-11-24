@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contagem Divertida — KanAcademy</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/css/games-style.css">
+</head>
+<body class="page-contarnumeros">
+
+<div class="topbar">
+  <a href="../index.html" class="back-link">⬅ Voltar</a>
+  <button id="diffToggle" class="diff-btn" onclick="toggleDiff()">Fácil (1-5)</button>
+  <div class="topbar-spacer"></div>
+  <button class="sound-toggle" id="soundToggle" onclick="toggleSound()">🔊</button>
+</div>
+
+<div class="board-wrap">
+  <div class="question-title">Quantos tem aqui?</div>
+  <div class="objects-container" id="objectsContainer"></div>
+  <div class="options-container" id="optionsContainer"></div>
+</div>
+
+<div class="botbar">
+  <div class="progress-wrap">
+    <span class="progress-label" id="progressLabel">0 / 5 rodadas</span>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+  </div>
+</div>
+
+<div class="win-overlay" id="winOverlay">
+  <div class="win-box">
+    <div style="font-size: 80px; margin-bottom: 10px;">🏆</div>
+    <h2>Você é um mestre da contagem!</h2>
+    <button class="win-btn" onclick="initGame()">Jogar Novamente</button>
+  </div>
+</div>
+
+<script>
+let soundEnabled = true;
+let audioCtx = null;
+const TOTAL_ROUNDS = 5;
+let currentRound = 0;
+let correctAnswer = 0;
+let isLocked = false;
+
+const LEVELS = [
+  { id: 'facil', name: 'Fácil (1-5)', min: 1, max: 5 },
+  { id: 'medio', name: 'Médio (1-10)', min: 1, max: 10 },
+  { id: 'dificil', name: 'Difícil (1-20)', min: 1, max: 20 }
+];
+let currentLevelIdx = 0;
+
+const EMOJIS = [
+  '🐝','✈️','🕷️',
+  '⚽','🍌','🦋',
+  '🐶','🏠','❤️',
+  '🎲','🦖','💎',
+  '🐘','⭐','🪥',
+  '🚀','🌸','🐱',
+  '🎸','🚁','🍔',
+  '🐊','🐞','🦁',
+  '🌙','✏️','🍎',
+  '🏍️','🦆','🍿',
+  '🧀','🤖','🐭',
+  '🐸','☀️','🍨',
+  '🍇','🐻','🦄',
+  '🐮','🕯️','☕'
+];
+
+function playTone(freq, dur, type='sine') {
+  if (!soundEnabled) return;
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.connect(gain); gain.connect(audioCtx.destination);
+  osc.type = type; osc.frequency.value = freq;
+  gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + dur);
+  osc.start(); osc.stop(audioCtx.currentTime + dur);
+}
+
+const Sounds = {
+  correct: () => { playTone(600,0.1); setTimeout(()=>playTone(800,0.2), 100); },
+  wrong: () => { playTone(300,0.2,'triangle'); setTimeout(()=>playTone(250,0.3,'triangle'), 150); },
+  win: () => { [523, 659, 783, 1046].forEach((f,i) => setTimeout(()=>playTone(f,0.3), i*150)); }
+};
+
+function toggleSound() {
+  soundEnabled = !soundEnabled;
+  document.getElementById('soundToggle').textContent = soundEnabled ? '🔊' : '🔇';
+  document.getElementById('soundToggle').classList.toggle('muted', !soundEnabled);
+}
+
+function toggleDiff() {
+  currentLevelIdx = (currentLevelIdx + 1) % LEVELS.length;
+  document.getElementById('diffToggle').textContent = LEVELS[currentLevelIdx].name;
+  initGame();
+}
+
+function spawnParticles() {
+  for (let i=0; i<15; i++) {
+    const el = document.createElement('div');
+    el.className = 'particle';
+    el.textContent = '✨';
+    const dx = (Math.random()-0.5)*400, dy = (Math.random()-0.5)*400;
+    el.style.cssText = `left:50%;top:50%;--dest:translate(${dx}px,${dy}px);--rot:${(Math.random()-0.5)*720}deg;`;
+    document.body.appendChild(el);
+    setTimeout(()=>el.remove(), 1200);
+  }
+}
+
+function initGame() {
+  currentRound = 0;
+  document.getElementById('winOverlay').classList.remove('show');
+  updateProgress();
+  nextRound();
+}
+
+function nextRound() {
+  if (currentRound >= TOTAL_ROUNDS) {
+    Sounds.win();
+    document.getElementById('winOverlay').classList.add('show');
+    spawnParticles();
+    return;
+  }
+  
+  isLocked = false;
+  const level = LEVELS[currentLevelIdx];
+  correctAnswer = Math.floor(Math.random() * (level.max - level.min + 1)) + level.min;
+  const emoji = EMOJIS[Math.floor(Math.random() * EMOJIS.length)];
+  
+  const objCont = document.getElementById('objectsContainer');
+  objCont.innerHTML = '';
+
+  let objSize = '4rem';
+  if (correctAnswer > 15) objSize = '2.5rem';
+  else if (correctAnswer > 10) objSize = '3.2rem';
+
+  for(let i=0; i<correctAnswer; i++) {
+    const span = document.createElement('span');
+    span.className = 'count-obj';
+    span.textContent = emoji;
+    span.style.fontSize = objSize;
+    span.style.animationDelay = `${Math.random()*0.5}s`;
+    objCont.appendChild(span);
+  }
+
+  let options = new Set([correctAnswer]);
+  while(options.size < 4) {
+    let wrong;
+    if (level.id === 'facil') {
+      wrong = Math.floor(Math.random() * 5) + 1;
+    } else if (level.id === 'medio') {
+      wrong = Math.floor(Math.random() * 10) + 1;
+    } else {
+      wrong = correctAnswer + (Math.floor(Math.random() * 7) - 3);
+      if (wrong < 1 || wrong > 25) wrong = Math.floor(Math.random() * 20) + 1;
+    }
+    if(wrong > 0 && wrong <= 25) options.add(wrong);
+  }
+  
+  const optCont = document.getElementById('optionsContainer');
+  optCont.innerHTML = '';
+  Array.from(options).sort(()=>Math.random()-0.5).forEach(num => {
+    const btn = document.createElement('button');
+    btn.className = 'opt-btn';
+    btn.textContent = num;
+    btn.onclick = () => handleAnswer(num, btn);
+    optCont.appendChild(btn);
+  });
+}
+
+function handleAnswer(num, btn) {
+  if (isLocked) return;
+  
+  if (num === correctAnswer) {
+    isLocked = true;
+    Sounds.correct();
+    btn.classList.add('correct');
+    currentRound++;
+    updateProgress();
+    setTimeout(nextRound, 1000);
+  } else {
+    Sounds.wrong();
+    btn.classList.add('wrong');
+    setTimeout(() => btn.classList.remove('wrong'), 500);
+  }
+}
+
+function updateProgress() {
+  const pct = (currentRound / TOTAL_ROUNDS) * 100;
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressLabel').textContent = `${currentRound} / ${TOTAL_ROUNDS} rodadas`;
+}
+
+initGame();
+</script>
+</body>
+</html>

@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jogo das Iniciais — KanAcademy</title>
+<link rel="stylesheet" href="../assets/css/games-style.css">
+</head>
+<body class="page-iniciais">
+
+<header class="topbar">
+  <a href="../index.html" class="back-link" aria-label="Início">⬅</a>
+  <div class="mode-switch" role="group" aria-label="Modo de jogo">
+    <button class="diff-btn" id="vowelsToggle" type="button" aria-pressed="true">Vogais</button>
+    <button class="diff-btn" id="alphabetToggle" type="button" aria-pressed="false">A-Z</button>
+  </div>
+  <div class="topbar-spacer"></div>
+  <button class="sound-toggle" id="soundToggle" type="button" aria-label="Desligar narração" title="Desligar narração">🔊</button>
+</header>
+
+<main class="initials-board-wrap">
+  <h1 class="initials-heading" id="gameTitle">Trace a letra até o objeto que começa com ela.</h1>
+
+  <section class="initials-board" id="gameBoard" aria-label="Tabuleiro do jogo">
+    <div class="initials-column letters-column" id="lettersColumn" aria-label="Letras"></div>
+    <svg class="connections-layer" id="connectionsSvg" aria-hidden="true">
+      <path id="activePath" class="connection-path active-path"></path>
+    </svg>
+    <div class="initials-column objects-column" id="objectsColumn" aria-label="Objetos"></div>
+  </section>
+
+  <p class="game-status sr-only" id="gameStatus" aria-live="polite"></p>
+  <div class="progress-wrap">
+    <span class="progress-label sr-only" id="progressLabel" aria-live="polite"></span>
+    <div class="progress-track" id="progressTrack" role="progressbar" aria-valuemin="0" aria-valuemax="5" aria-valuenow="0" aria-label="Progresso da rodada">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+    <div class="stars-display" id="starsDisplay" role="status" aria-live="polite" aria-label="Estrelas conquistadas: 0">
+      <span id="starsIcons" aria-hidden="true"></span>
+      <span class="stars-count" id="starsCount">0</span>
+    </div>
+    <button class="restart-inline" id="restartButton" type="button" aria-label="Recomeçar sessão">🔄 Recomeçar</button>
+  </div>
+</main>
+
+<script>
+const VOWELS = ['A', 'E', 'I', 'O', 'U'];
+const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+const PAIRS_PER_ROUND = 5;
+
+const DATA = [
+  { initial: 'A', label: 'Abelha', emoji: '🐝' },
+  { initial: 'B', label: 'Bola', emoji: '⚽' },
+  { initial: 'C', label: 'Casa', emoji: '🏠' },
+  { initial: 'D', label: 'Dado', emoji: '🎲' },
+  { initial: 'E', label: 'Elefante', emoji: '🐘' },
+  { initial: 'F', label: 'Flor', emoji: '🌸' },
+  { initial: 'G', label: 'Gato', emoji: '🐱' },
+  { initial: 'H', label: 'Hambúrguer', emoji: '🍔' },
+  { initial: 'I', label: 'Iguana', emoji: '🦎' },
+  { initial: 'J', label: 'Jacaré', emoji: '🐊' },
+  { initial: 'K', label: 'Kiwi', emoji: '🥝' },
+  { initial: 'L', label: 'Leão', emoji: '🦁' },
+  { initial: 'M', label: 'Maçã', emoji: '🍎' },
+  { initial: 'N', label: 'Navio', emoji: '🚢' },
+  { initial: 'O', label: 'Ovo', emoji: '🥚' },
+  { initial: 'P', label: 'Pizza', emoji: '🍕' },
+  { initial: 'Q', label: 'Queijo', emoji: '🧀' },
+  { initial: 'R', label: 'Rato', emoji: '🐭' },
+  { initial: 'S', label: 'Sapo', emoji: '🐸' },
+  { initial: 'T', label: 'Tigre', emoji: '🐯' },
+  { initial: 'U', label: 'Uva', emoji: '🍇' },
+  { initial: 'V', label: 'Vaca', emoji: '🐮' },
+  { initial: 'W', label: 'Waffle', emoji: '🧇' },
+  { initial: 'X', label: 'Xícara', emoji: '☕' },
+  { initial: 'Y', label: 'Yoga', emoji: '🧘' },
+  { initial: 'Z', label: 'Zebra', emoji: '🦓' }
+];
+
+function shuffleArray(values, random = Math.random) {
+  return [...values].sort(() => random() - 0.5);
+}
+
+function createRoundData(level, data, random = Math.random) {
+  const allowedInitials = level === 'vowels' ? VOWELS : ALPHABET;
+  const availableItems = data.filter(item => allowedInitials.includes(item.initial));
+  const groupedItems = new Map();
+
+  availableItems.forEach(item => {
+    const items = groupedItems.get(item.initial) || [];
+    groupedItems.set(item.initial, [...items, item]);
+  });
+
+  const initials = shuffleArray([...groupedItems.keys()], random).slice(0, PAIRS_PER_ROUND);
+  const items = initials.map(initial => {
+    const choices = groupedItems.get(initial);
+    return choices[Math.floor(random() * choices.length)];
+  });
+
+  return {
+    letters: shuffleArray(initials.map(initial => ({ initial })), random),
+    items: shuffleArray(items, random)
+  };
+}
+
+function isCorrectMatch(letter, item) {
+  return String(letter).toUpperCase() === String(item?.initial || '').toUpperCase();
+}
+
+function getDropTarget(point, itemElements) {
+  return itemElements.find(element => {
+    const rect = element.getBoundingClientRect();
+    return point.x >= rect.left &&
+      point.x <= rect.right &&
+      point.y >= rect.top &&
+      point.y <= rect.bottom;
+  }) || null;
+}
+
+function buildPath(points) {
+  if (!points.length) return '';
+  return points.map((point, index) =>
+    `${index === 0 ? 'M' : 'L'} ${Math.round(point.x * 10) / 10} ${Math.round(point.y * 10) / 10}`
+  ).join(' ');
+}
+
+function isCurrentGeneration(scheduleGeneration, activeGeneration) {
+  return scheduleGeneration === activeGeneration;
+}
+
+function getOverlayVisibilityState(isVisible) {
+  return isVisible
+    ? { ariaHidden: 'false', inert: false, tabIndex: 0 }
+    : { ariaHidden: 'true', inert: true, tabIndex: -1 };
+}
+
+const Sounds = {
+  voiceEnabled: true,
+  effectsEnabled: true,
+  context: null,
+
+  speak(text) {
+    if (!this.voiceEnabled || !window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'pt-BR';
+    utterance.rate = 0.95;
+    utterance.pitch = 1.05;
+    window.speechSynthesis.speak(utterance);
+  },
+
+  tone(frequency, duration, type = 'sine') {
+    if (!this.effectsEnabled) return;
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    if (!this.context) this.context = new AudioContext();
+
+    const oscillator = this.context.createOscillator();
+    const gain = this.context.createGain();
+    oscillator.type = type;
+    oscillator.frequency.value = frequency;
+    oscillator.connect(gain);
+    gain.connect(this.context.destination);
+    gain.gain.setValueAtTime(0.18, this.context.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, this.context.currentTime + duration);
+    oscillator.start();
+    oscillator.stop(this.context.currentTime + duration);
+  },
+
+  correct() {
+    this.tone(620, 0.12);
+    setTimeout(() => this.tone(880, 0.18), 100);
+  },
+
+  wrong() {
+    this.tone(220, 0.2, 'triangle');
+    setTimeout(() => this.tone(160, 0.22, 'triangle'), 120);
+  },
+
+  win() {
+    [523, 659, 784, 1046].forEach((frequency, index) => {
+      setTimeout(() => this.tone(frequency, 0.2), index * 120);
+    });
+  }
+};
+
+let currentLevel = 'vowels';
+let currentRound = 0;
+let completedConnections = 0;
+let starsEarned = 0;
+let activeGesture = null;
+let roundLocked = false;
+let roundTransitionTimer = null;
+let gameGeneration = 0;
+
+let board;
+let lettersColumn;
+let objectsColumn;
+let connectionsSvg;
+let activePath;
+let gameStatus;
+let progressFill;
+let progressLabel;
+let progressTrack;
+let starsDisplay;
+let starsIcons;
+let starsCount;
+let vowelsToggle;
+let alphabetToggle;
+let soundToggle;
+let restartButton;
+
+function getBoardPoint(event) {
+  const rect = board.getBoundingClientRect();
+  return { x: event.clientX - rect.left, y: event.clientY - rect.top };
+}
+
+function getClientPoint(event) {
+  return { x: event.clientX, y: event.clientY };
+}
+
+function updateProgress() {
+  const completedInRound = completedConnections % PAIRS_PER_ROUND;
+  const percentage = (completedInRound / PAIRS_PER_ROUND) * 100;
+  progressFill.style.width = `${percentage}%`;
+  progressLabel.textContent = `${completedInRound} / ${PAIRS_PER_ROUND} conexões na rodada · ${completedConnections} no total · ${starsEarned} estrelas`;
+  progressTrack.setAttribute('aria-valuenow', String(completedInRound));
+}
+
+function updateStars() {
+  starsIcons.textContent = '⭐'.repeat(starsEarned);
+  starsCount.textContent = String(starsEarned);
+  starsDisplay.setAttribute('aria-label', `Estrelas conquistadas: ${starsEarned}`);
+}
+
+function updateStatus(message) {
+  gameStatus.textContent = message;
+}
+
+function clearConnections() {
+  connectionsSvg.querySelectorAll('.permanent-path').forEach(path => path.remove());
+  activePath.setAttribute('d', '');
+}
+
+function createLetterCard(letter) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'initial-card letter-card';
+  button.dataset.initial = letter.initial;
+  button.setAttribute('aria-label', `Letra ${letter.initial}`);
+  button.innerHTML = `<span>${letter.initial}</span><span class="card-sound">🔊</span>`;
+  button.addEventListener('pointerdown', event => startGesture(event, button));
+  button.addEventListener('keydown', event => {
+    if (event.key === 'Enter' || event.key === ' ') Sounds.speak(letter.initial);
+  });
+  return button;
+}
+
+function createObjectCard(item) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'initial-card object-card';
+  button.dataset.initial = item.initial;
+  button.dataset.label = item.label;
+  button.setAttribute('aria-label', `${item.label}, começa com ${item.initial}`);
+  button.innerHTML = `<span class="object-emoji" aria-hidden="true">${item.emoji}</span>`;
+  button.addEventListener('pointerdown', () => Sounds.speak(item.label));
+  button.addEventListener('keydown', event => {
+    if (event.key === 'Enter' || event.key === ' ') Sounds.speak(item.label);
+  });
+  return button;
+}
+
+function renderRound() {
+  roundLocked = false;
+  activeGesture = null;
+  clearConnections();
+  lettersColumn.innerHTML = '';
+  objectsColumn.innerHTML = '';
+  const round = createRoundData(currentLevel, DATA);
+
+  round.letters.forEach(letter => lettersColumn.appendChild(createLetterCard(letter)));
+  round.items.forEach(item => objectsColumn.appendChild(createObjectCard(item)));
+  updateStatus('Escolha uma letra e trace até o objeto correspondente.');
+}
+
+function startGesture(event, letterElement) {
+  if (roundLocked || letterElement.classList.contains('connected')) return;
+  event.preventDefault();
+  letterElement.setPointerCapture(event.pointerId);
+  const start = getBoardPoint(event);
+  activeGesture = {
+    pointerId: event.pointerId,
+    letterElement,
+    points: [start],
+    moved: false
+  };
+  letterElement.classList.add('tracing');
+  activePath.setAttribute('d', buildPath(activeGesture.points));
+  letterElement.addEventListener('pointermove', handleGestureMove);
+  letterElement.addEventListener('pointerup', handleGestureEnd, { once: true });
+  letterElement.addEventListener('pointercancel', cancelGesture, { once: true });
+}
+
+function handleGestureMove(event) {
+  if (!activeGesture || event.pointerId !== activeGesture.pointerId) return;
+  const point = getBoardPoint(event);
+  const previous = activeGesture.points.at(-1);
+  if (Math.hypot(point.x - previous.x, point.y - previous.y) < 3) return;
+  activeGesture.points.push(point);
+  activeGesture.moved = activeGesture.moved || activeGesture.points.length > 2;
+  activePath.setAttribute('d', buildPath(activeGesture.points));
+}
+
+function handleGestureEnd(event) {
+  if (!activeGesture || event.pointerId !== activeGesture.pointerId) return;
+  const gesture = activeGesture;
+  const letterElement = gesture.letterElement;
+  const clientPoint = getClientPoint(event);
+  const target = getDropTarget(clientPoint, [...objectsColumn.querySelectorAll('.object-card:not(.connected)')]);
+  const itemInitial = target?.dataset.initial;
+  const isMatch = gesture.moved && target && isCorrectMatch(letterElement.dataset.initial, { initial: itemInitial });
+
+  letterElement.releasePointerCapture(event.pointerId);
+  letterElement.removeEventListener('pointermove', handleGestureMove);
+  letterElement.classList.remove('tracing');
+
+  if (isMatch) {
+    connectPair(letterElement, target, gesture.points);
+  } else if (gesture.moved) {
+    rejectGesture(letterElement, target);
+  } else {
+    Sounds.speak(letterElement.dataset.initial);
+    activePath.setAttribute('d', '');
+  }
+
+  activeGesture = null;
+}
+
+function cancelGesture() {
+  if (!activeGesture) return;
+  activeGesture.letterElement.classList.remove('tracing');
+  activePath.setAttribute('d', '');
+  activeGesture = null;
+}
+
+function connectPair(letterElement, objectElement, points) {
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  path.setAttribute('d', buildPath(points));
+  path.classList.add('connection-path', 'permanent-path');
+  connectionsSvg.insertBefore(path, activePath);
+  letterElement.classList.add('connected');
+  objectElement.classList.add('connected');
+  activePath.setAttribute('d', '');
+  completedConnections++;
+  if (completedConnections % PAIRS_PER_ROUND === 0) {
+    starsEarned++;
+    updateStars();
+  }
+  updateProgress();
+  Sounds.correct();
+  setTimeout(() => Sounds.speak(`${letterElement.dataset.initial} de ${objectElement.dataset.label}`), 140);
+  updateStatus(`Muito bem! ${objectElement.dataset.label} começa com ${letterElement.dataset.initial}.`);
+  spawnParticles(objectElement);
+
+  const connectedThisRound = objectsColumn.querySelectorAll('.object-card.connected').length;
+  if (connectedThisRound === PAIRS_PER_ROUND) {
+    roundLocked = true;
+    currentRound++;
+    scheduleNextRound();
+  }
+}
+
+function scheduleNextRound() {
+  clearTimeout(roundTransitionTimer);
+  const scheduledGeneration = gameGeneration;
+  roundTransitionTimer = setTimeout(() => {
+    if (!isCurrentGeneration(scheduledGeneration, gameGeneration)) return;
+    roundTransitionTimer = null;
+    renderRound();
+  }, 900);
+}
+
+function rejectGesture(letterElement, target) {
+  Sounds.wrong();
+  activePath.classList.add('error-path');
+  letterElement.classList.add('wrong-choice');
+  target?.classList.add('wrong-choice');
+  updateStatus('Quase! Tente ligar à figura que começa com essa letra.');
+  setTimeout(() => {
+    activePath.setAttribute('d', '');
+    activePath.classList.remove('error-path');
+    letterElement.classList.remove('wrong-choice');
+    target?.classList.remove('wrong-choice');
+  }, 420);
+}
+
+function spawnParticles(element) {
+  const rect = element.getBoundingClientRect();
+  for (let index = 0; index < 8; index++) {
+    const particle = document.createElement('span');
+    particle.className = 'particle';
+    particle.textContent = ['✨', '⭐', '🎈'][index % 3];
+    particle.style.left = `${rect.left + rect.width / 2}px`;
+    particle.style.top = `${rect.top + rect.height / 2}px`;
+    particle.style.setProperty('--x', `${(Math.random() - 0.5) * 160}px`);
+    particle.style.setProperty('--y', `${(Math.random() - 0.5) * 160}px`);
+    document.body.appendChild(particle);
+    setTimeout(() => particle.remove(), 800);
+  }
+}
+
+function resetGame() {
+  clearTimeout(roundTransitionTimer);
+  roundTransitionTimer = null;
+  gameGeneration++;
+  currentRound = 0;
+  completedConnections = 0;
+  starsEarned = 0;
+  roundLocked = false;
+  updateProgress();
+  updateStars();
+  renderRound();
+}
+
+function setLevel(level) {
+  if (level === currentLevel) return;
+  currentLevel = level;
+  syncLevelControls();
+  resetGame();
+}
+
+function syncLevelControls() {
+  const vowelsActive = currentLevel === 'vowels';
+  vowelsToggle.setAttribute('aria-pressed', String(vowelsActive));
+  alphabetToggle.setAttribute('aria-pressed', String(!vowelsActive));
+}
+
+function toggleSound() {
+  Sounds.voiceEnabled = !Sounds.voiceEnabled;
+  if (!Sounds.voiceEnabled && window.speechSynthesis) {
+    window.speechSynthesis.cancel();
+  }
+  soundToggle.textContent = Sounds.voiceEnabled ? '🔊' : '🔇';
+  soundToggle.setAttribute('aria-label', Sounds.voiceEnabled ? 'Desligar narração' : 'Ligar narração');
+  soundToggle.setAttribute('title', Sounds.voiceEnabled ? 'Desligar narração' : 'Ligar narração');
+  soundToggle.classList.toggle('muted', !Sounds.voiceEnabled);
+}
+
+function init() {
+  board = document.getElementById('gameBoard');
+  lettersColumn = document.getElementById('lettersColumn');
+  objectsColumn = document.getElementById('objectsColumn');
+  connectionsSvg = document.getElementById('connectionsSvg');
+  activePath = document.getElementById('activePath');
+  gameStatus = document.getElementById('gameStatus');
+  progressFill = document.getElementById('progressFill');
+  progressLabel = document.getElementById('progressLabel');
+  progressTrack = document.getElementById('progressTrack');
+  starsDisplay = document.getElementById('starsDisplay');
+  starsIcons = document.getElementById('starsIcons');
+  starsCount = document.getElementById('starsCount');
+  vowelsToggle = document.getElementById('vowelsToggle');
+  alphabetToggle = document.getElementById('alphabetToggle');
+  soundToggle = document.getElementById('soundToggle');
+  restartButton = document.getElementById('restartButton');
+  vowelsToggle.addEventListener('click', () => setLevel('vowels'));
+  alphabetToggle.addEventListener('click', () => setLevel('alphabet'));
+  soundToggle.addEventListener('click', toggleSound);
+  restartButton.addEventListener('click', resetGame);
+  syncLevelControls();
+  updateProgress();
+  updateStars();
+  renderRound();
+}
+
+if (typeof document !== 'undefined') init();
+</script>
+</body>
+</html>

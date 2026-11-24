@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jogo das Vogais — KanAcademy</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/css/games-style.css">
+</head>
+<body class="page-vogais">
+
+<div class="topbar">
+  <a href="../index.html" class="btn-back">⬅ Voltar</a>
+  <div class="progress-container">
+    <div class="progress-fill" id="progressFill"></div>
+  </div>
+  <div class="stats">
+    <span id="scoreText">0</span>/10
+  </div>
+  <button class="sound-toggle" id="soundToggle" type="button" aria-label="Desligar narração" title="Desligar narração" aria-pressed="true" onclick="toggleVoice()">🔊</button>
+</div>
+
+<main>
+  <div class="vowel-container" id="vowelContainer">
+    <div class="vowel-slot" data-vowel="A">A</div>
+    <div class="vowel-slot" data-vowel="E">E</div>
+    <div class="vowel-slot" data-vowel="I">I</div>
+    <div class="vowel-slot" data-vowel="O">O</div>
+    <div class="vowel-slot" data-vowel="U">U</div>
+  </div>
+
+  <div class="items-container" id="itemsContainer">
+    <!-- Items dynamically injected here -->
+  </div>
+</main>
+
+<div id="winOverlay">
+  <div class="win-title">PARABÉNS! 🌟</div>
+  <p style="font-size: 24px;">Você conhece todas as vogais!</p>
+  <button class="btn-restart" onclick="resetGame()">Jogar de Novo</button>
+</div>
+
+<script>
+const Sounds = {
+  ctx: new (window.AudioContext || window.webkitAudioContext)(),
+  voiceEnabled: true,
+  
+  // Função para narrar a vogal (Tecnologia Speech Synthesis)
+  speak: (text) => {
+    if (!Sounds.voiceEnabled) return;
+    // Cancela falas anteriores para não encavalar
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'pt-BR'; // Português do Brasil para pronúncia clara
+    utterance.rate = 1.1;     // Velocidade levemente aumentada para tom jovial
+    utterance.pitch = 1.2;    // Tom mais agudo para parecer amigável
+    window.speechSynthesis.speak(utterance);
+  },
+
+  correct() {
+    const o = this.ctx.createOscillator();
+    const g = this.ctx.createGain();
+    o.type = 'sine';
+    o.connect(g); g.connect(this.ctx.destination);
+    g.gain.setValueAtTime(0, this.ctx.currentTime);
+    g.gain.linearRampToValueAtTime(0.3, this.ctx.currentTime + 0.1);
+    g.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.5);
+    o.frequency.setValueAtTime(523.25, this.ctx.currentTime); // C5
+    o.frequency.exponentialRampToValueAtTime(1046.50, this.ctx.currentTime + 0.3); // C6
+    o.start(); o.stop(this.ctx.currentTime + 0.5);
+  },
+  wrong() {
+    const o = this.ctx.createOscillator();
+    const g = this.ctx.createGain();
+    o.type = 'sawtooth';
+    o.connect(g); g.connect(this.ctx.destination);
+    g.gain.setValueAtTime(0.1, this.ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
+    o.frequency.setValueAtTime(150, this.ctx.currentTime);
+    o.frequency.linearRampToValueAtTime(80, this.ctx.currentTime + 0.3);
+    o.start(); o.stop(this.ctx.currentTime + 0.3);
+  }
+};
+
+function toggleVoice() {
+  Sounds.voiceEnabled = !Sounds.voiceEnabled;
+
+  if (!Sounds.voiceEnabled && window.speechSynthesis) {
+    window.speechSynthesis.cancel();
+  }
+
+  const button = document.getElementById('soundToggle');
+  const label = Sounds.voiceEnabled ? 'Desligar narração' : 'Ligar narração';
+  button.textContent = Sounds.voiceEnabled ? '🔊' : '🔇';
+  button.setAttribute('aria-label', label);
+  button.setAttribute('title', label);
+  button.setAttribute('aria-pressed', String(Sounds.voiceEnabled));
+  button.classList.toggle('muted', !Sounds.voiceEnabled);
+}
+
+const DATA = [
+  { emoji: '🐝', label: 'Abelha', vowel: 'A' },
+  { emoji: '✈️', label: 'Avião', vowel: 'A' },
+  { emoji: '🌳', label: 'Árvore', vowel: 'A' },
+  { emoji: '🕷️', label: 'Aranha', vowel: 'A' },
+  // { emoji: '🦅', label: 'Águia', vowel: 'A' },
+
+  { emoji: '🐘', label: 'Elefante', vowel: 'E' },
+  { emoji: '⭐', label: 'Estrela', vowel: 'E' },
+  { emoji: '🦂', label: 'Escorpião', vowel: 'E' },
+  { emoji: '🪜', label: 'Escada', vowel: 'E' },
+  // { emoji: '🏫', label: 'Escola', vowel: 'E' },
+
+  { emoji: '🦎', label: 'Iguana', vowel: 'I' },
+  { emoji: '⛪', label: 'Igreja', vowel: 'I' },
+  { emoji: '🏝️', label: 'Ilha', vowel: 'I' },
+  { emoji: '🧲', label: 'Ímã', vowel: 'I' },
+
+  { emoji: '🥚', label: 'Ovo', vowel: 'O' },
+  // { emoji: '🐑', label: 'Ovelha', vowel: 'O' },
+  { emoji: '👁️', label: 'Olho', vowel: 'O' },
+  { emoji: '👂', label: 'Orelha', vowel: 'O' },
+  { emoji: '🚌', label: 'Ônibus', vowel: 'O' },
+
+  { emoji: '🍇', label: 'Uva', vowel: 'U' },
+  { emoji: '🐻', label: 'Urso', vowel: 'U' },
+  { emoji: '🐻‍❄️', label: 'Urso', vowel: 'U' },
+  { emoji: '🦄', label: 'Unicórnio', vowel: 'U' },
+  
+];
+
+let currentRound = 0;
+let itemsPlacedRound = 0;
+let itemsPlacedTotal = 0;
+const ITEMS_PER_ROUND = 3;
+const TOTAL_ITEMS = 10;
+
+function init() {
+  // Adiciona evento de clique/toque nas letras para falar o nome delas
+  document.querySelectorAll('.vowel-slot').forEach(slot => {
+    slot.addEventListener('pointerdown', () => {
+      Sounds.speak(slot.dataset.vowel);
+    });
+  });
+
+  loadRound();
+}
+
+function loadRound() {
+  if (itemsPlacedTotal >= TOTAL_ITEMS) {
+    showWin();
+    return;
+  }
+
+  const container = document.getElementById('itemsContainer');
+  container.innerHTML = '';
+  itemsPlacedRound = 0;
+
+  // Seleciona itens aleatórios diferentes
+  let available = [...DATA].sort(() => Math.random() - 0.5);
+  let selection = available.slice(0, ITEMS_PER_ROUND);
+
+  selection.forEach(data => {
+    const el = document.createElement('div');
+    el.className = 'draggable-item';
+    el.dataset.vowel = data.vowel;
+    el.innerHTML = `<span class="emoji">${data.emoji}</span><span class="label">${data.label}</span>`;
+    container.appendChild(el);
+    makeDraggable(el);
+  });
+}
+
+function makeDraggable(el) {
+  let startX, startY, currentX = 0, currentY = 0;
+
+  el.addEventListener('pointerdown', e => {
+    el.setPointerCapture(e.pointerId);
+    startX = e.clientX - currentX;
+    startY = e.clientY - currentY;
+    el.style.transition = 'none';
+  });
+
+  el.addEventListener('pointermove', e => {
+    if (!el.hasPointerCapture(e.pointerId)) return;
+    currentX = e.clientX - startX;
+    currentY = e.clientY - startY;
+    el.style.transform = `translate(${currentX}px, ${currentY}px) scale(1.1)`;
+
+    // Hover feedback
+    checkHover(el);
+  });
+
+  el.addEventListener('pointerup', e => {
+    el.releasePointerCapture(e.pointerId);
+    el.style.transition = 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+    
+    const rect = el.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+
+    let droppedZone = null;
+    const zones = document.querySelectorAll('.vowel-slot');
+    
+    zones.forEach(zone => {
+      zone.classList.remove('hovered');
+      const zRect = zone.getBoundingClientRect();
+      if (centerX >= zRect.left && centerX <= zRect.right &&
+          centerY >= zRect.top && centerY <= zRect.bottom) {
+        droppedZone = zone;
+      }
+    });
+
+    if (droppedZone) {
+      if (droppedZone.dataset.vowel === el.dataset.vowel) {
+        // Correto!
+        Sounds.correct();
+        // Narra a vogal como reforço positivo
+        setTimeout(() => Sounds.speak(droppedZone.dataset.vowel), 100);
+        
+        spawnParticles(centerX, centerY);
+        el.style.transform = `translate(${currentX}px, ${currentY}px) scale(0)`;
+        el.style.pointerEvents = 'none';
+        
+        itemsPlacedRound++;
+        itemsPlacedTotal++;
+        updateProgress();
+
+        if (itemsPlacedRound === ITEMS_PER_ROUND) {
+          setTimeout(loadRound, 1000);
+        }
+      } else {
+        // Errado
+        Sounds.wrong();
+        resetPosition(el);
+        el.classList.add('wrong-anim');
+        setTimeout(() => el.classList.remove('wrong-anim'), 400);
+      }
+    } else {
+      resetPosition(el);
+    }
+  });
+
+  function checkHover(element) {
+    const rect = element.getBoundingClientRect();
+    const cx = rect.left + rect.width/2;
+    const cy = rect.top + rect.height/2;
+
+    document.querySelectorAll('.vowel-slot').forEach(zone => {
+      const zRect = zone.getBoundingClientRect();
+      if (cx >= zRect.left && cx <= zRect.right && cy >= zRect.top && cy <= zRect.bottom) {
+        zone.classList.add('hovered');
+      } else {
+        zone.classList.remove('hovered');
+      }
+    });
+  }
+
+  function resetPosition(element) {
+    currentX = 0; currentY = 0;
+    element.style.transform = `translate(0px, 0px) scale(1)`;
+  }
+}
+
+function updateProgress() {
+  const pct = (itemsPlacedTotal / TOTAL_ITEMS) * 100;
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('scoreText').textContent = itemsPlacedTotal;
+}
+
+function spawnParticles(x, y) {
+  for (let i = 0; i < 8; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.textContent = ['✨','⭐','🎈'][Math.floor(Math.random()*3)];
+    p.style.left = x + 'px';
+    p.style.top = y + 'px';
+    const dx = (Math.random() - 0.5) * 200;
+    const dy = (Math.random() - 0.5) * 200;
+    p.style.setProperty('--x', `${dx}px`);
+    p.style.setProperty('--y', `${dy}px`);
+    document.body.appendChild(p);
+    setTimeout(() => p.remove(), 800);
+  }
+}
+
+function showWin() {
+  document.getElementById('winOverlay').classList.add('show');
+}
+
+function resetGame() {
+  itemsPlacedTotal = 0;
+  updateProgress();
+  document.getElementById('winOverlay').classList.remove('show');
+  loadRound();
+}
+
+window.onload = init;
+</script>
+
+</body>
+</html>
