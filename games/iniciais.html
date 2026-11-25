@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Jogo das Iniciais — HarryApps</title>
-<link rel="stylesheet" href="../assets/css/games-style.css">
+<link rel="stylesheet" href="../assets/css/games-style.css?v=20261124-1">
 </head>
 <body class="page-iniciais">
 
@@ -37,11 +37,15 @@
     </div>
     <div class="stars-display" id="starsDisplay" role="status" aria-live="polite" aria-label="Estrelas conquistadas: 0">
       <span id="starsIcons" aria-hidden="true"></span>
-      <span class="stars-count" id="starsCount">0</span>
     </div>
     <button class="restart-inline" id="restartButton" type="button" aria-label="Recomeçar sessão">🔄 Recomeçar</button>
   </div>
 </main>
+
+<div class="star-reward" id="starReward" aria-hidden="true">
+  <span class="star-reward-icon" aria-hidden="true">⭐</span>
+  <span>Parabéns! Você ganhou uma estrela!</span>
+</div>
 
 <script>
 const VOWELS = ['A', 'E', 'I', 'O', 'U'];
@@ -452,6 +456,7 @@ let starsEarned = 0;
 let activeGesture = null;
 let roundLocked = false;
 let roundTransitionTimer = null;
+let starRewardTimer = null;
 let gameGeneration = 0;
 
 let board;
@@ -466,7 +471,7 @@ let progressLabel;
 let progressTrack;
 let starsDisplay;
 let starsIcons;
-let starsCount;
+let starReward;
 let vowelsToggle;
 let alphabetToggle;
 let soundToggle;
@@ -491,10 +496,42 @@ function updateProgress() {
   progressTrack.setAttribute('aria-valuenow', String(completedInRound));
 }
 
+function createStarIcon(starNumber) {
+  const star = document.createElement('span');
+  star.className = 'earned-star';
+  star.textContent = '⭐';
+  star.dataset.starNumber = String(starNumber);
+  star.setAttribute('aria-hidden', 'true');
+  return star;
+}
+
 function updateStars() {
-  starsIcons.textContent = '⭐'.repeat(starsEarned);
-  starsCount.textContent = String(starsEarned);
+  while (starsIcons.childElementCount > starsEarned) {
+    starsIcons.lastElementChild.remove();
+  }
+
+  while (starsIcons.childElementCount < starsEarned) {
+    starsIcons.appendChild(createStarIcon(starsIcons.childElementCount + 1));
+  }
+
   starsDisplay.setAttribute('aria-label', `Estrelas conquistadas: ${starsEarned}`);
+}
+
+function showStarReward() {
+  clearTimeout(starRewardTimer);
+  starReward.classList.remove('show');
+  void starReward.offsetWidth;
+  starReward.classList.add('show');
+  starRewardTimer = setTimeout(() => {
+    starReward.classList.remove('show');
+    starRewardTimer = null;
+  }, 1500);
+}
+
+function hideStarReward() {
+  clearTimeout(starRewardTimer);
+  starRewardTimer = null;
+  starReward.classList.remove('show');
 }
 
 function updateStatus(message) {
@@ -642,6 +679,7 @@ function connectPair(letterElement, objectElement, points) {
     roundLocked = true;
     starsEarned++;
     updateStars();
+    showStarReward();
   }
 
   updateProgress();
@@ -704,6 +742,7 @@ function spawnParticles(element) {
 function resetGame() {
   clearTimeout(roundTransitionTimer);
   roundTransitionTimer = null;
+  hideStarReward();
   gameGeneration++;
   currentRound = 0;
   completedConnections = 0;
@@ -754,7 +793,7 @@ function init() {
   progressTrack = document.getElementById('progressTrack');
   starsDisplay = document.getElementById('starsDisplay');
   starsIcons = document.getElementById('starsIcons');
-  starsCount = document.getElementById('starsCount');
+  starReward = document.getElementById('starReward');
   vowelsToggle = document.getElementById('vowelsToggle');
   alphabetToggle = document.getElementById('alphabetToggle');
   soundToggle = document.getElementById('soundToggle');

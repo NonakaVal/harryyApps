@@ -1491,11 +1491,24 @@ body.page-iniciais .stars-display {
   color: #553467;
   font-size: 1.1rem;
   font-weight: 900;
-  letter-spacing: 2px;
+  line-height: 1;
 }
 
-body.page-iniciais .stars-count {
-  letter-spacing: 0;
+body.page-iniciais #starsIcons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 3px;
+  max-width: 100%;
+}
+
+body.page-iniciais .earned-star {
+  display: inline-block;
+  font-size: 1.5rem;
+  line-height: 1;
+  transform: scale(.2) rotate(-18deg);
+  opacity: 0;
+  animation: iniciais-star-earned 360ms cubic-bezier(.68, -.55, .265, 1.55) both;
 }
 
 body.page-iniciais .restart-inline {
@@ -1541,6 +1554,45 @@ body.page-iniciais .progress-fill {
   border-radius: inherit;
   background: linear-gradient(90deg, var(--yellow), #ff9f1c);
   transition: width 350ms ease-out;
+}
+
+body.page-iniciais .star-reward {
+  position: fixed;
+  top: 78px;
+  left: 50%;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: max-content;
+  max-width: calc(100% - 32px);
+  padding: 12px 20px;
+  border: 3px solid var(--yellow);
+  border-radius: 999px;
+  color: var(--blue-deep);
+  font-weight: 900;
+  text-align: center;
+  background: #fff;
+  box-shadow: 0 10px 26px rgba(26, 79, 160, .25);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -16px) scale(.92);
+  transition: opacity 200ms ease-out, transform 280ms ease-out;
+}
+
+body.page-iniciais .star-reward.show {
+  opacity: 1;
+  transform: translate(-50%, 0) scale(1);
+}
+
+body.page-iniciais .star-reward-icon {
+  display: inline-block;
+  font-size: 1.7rem;
+  line-height: 1;
+}
+
+body.page-iniciais .star-reward.show .star-reward-icon {
+  animation: iniciais-star-reward 500ms cubic-bezier(.68, -.55, .265, 1.55) both;
 }
 
 body.page-iniciais .win-overlay {
@@ -1631,6 +1683,42 @@ body.page-iniciais .particle {
   }
 }
 
+@keyframes iniciais-star-earned {
+  0% {
+    opacity: 0;
+    transform: scale(.2) rotate(-18deg);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.2) rotate(6deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0);
+  }
+}
+
+@keyframes iniciais-star-reward {
+  0% {
+    transform: scale(.45) rotate(-20deg);
+  }
+  65% {
+    transform: scale(1.2) rotate(8deg);
+  }
+  100% {
+    transform: scale(1) rotate(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.page-iniciais .earned-star,
+  body.page-iniciais .star-reward,
+  body.page-iniciais .star-reward-icon {
+    animation-duration: .01ms;
+    transition-duration: .01ms;
+  }
+}
+
 @media (max-width: 600px) {
   body.page-iniciais .topbar {
     padding: 8px 10px;
@@ -1659,6 +1747,12 @@ body.page-iniciais .particle {
 
   body.page-iniciais .initials-heading {
     font-size: 1rem;
+  }
+
+  body.page-iniciais .star-reward {
+    top: 68px;
+    padding: 10px 14px;
+    font-size: .9rem;
   }
 
   body.page-iniciais .initials-board {
