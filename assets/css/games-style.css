@@ -1363,22 +1363,38 @@ body.page-iniciais .initial-card {
 
 body.page-iniciais .letter-card {
   width: 78px;
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 3px;
   font-size: 2.25rem;
   font-weight: 900;
   touch-action: none;
 }
 
 body.page-iniciais .card-sound {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
   font-size: .72rem;
   opacity: .6;
 }
 
-body.page-iniciais .object-emoji {
-  font-size: clamp(1.9rem, 6vw, 2.5rem);
+body.page-iniciais .letter-icon,
+body.page-iniciais .object-icon {
+  display: block;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+body.page-iniciais .letter-icon {
+  width: 36px;
+  height: 36px;
+}
+
+body.page-iniciais .object-icon {
+  width: 100%;
+  height: 48px;
   line-height: 1;
 }
 
@@ -1671,8 +1687,18 @@ body.page-iniciais .particle {
     border-radius: 14px;
   }
 
-  body.page-iniciais .object-emoji {
-    font-size: 1.7rem;
+  body.page-iniciais .letter-icon {
+    width: 30px;
+    height: 32px;
+  }
+
+  body.page-iniciais .card-sound {
+    right: 4px;
+    bottom: 4px;
+  }
+
+  body.page-iniciais .object-icon {
+    height: 44px;
   }
 }
 

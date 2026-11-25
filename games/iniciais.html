@@ -48,6 +48,7 @@ const VOWELS = ['A', 'E', 'I', 'O', 'U'];
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 const PAIRS_PER_ROUND = 5;
 const DEFAULT_TITLE = 'Trace a letra até o objeto que começa com ela.';
+const ICON_ASSET_PATH = '../assets/Icons/webp/';
 
 const ALPHABET_DATA = [
   { letter: 'A', examples: [
@@ -92,8 +93,7 @@ const ALPHABET_DATA = [
   ]},
   { letter: 'I', examples: [
     { word: 'Ilha', emoji: '🏝️' },
-    { word: 'Iguana', emoji: '🦎' },
-    { word: 'Iogurte', emoji: '🍦' }
+    { word: 'Iguana', emoji: '🦎' }
   ]},
   { letter: 'J', examples: [
     { word: 'Jacaré', emoji: '🐊' },
@@ -143,7 +143,8 @@ const ALPHABET_DATA = [
   { letter: 'S', examples: [
     { word: 'Sapo', emoji: '🐸' },
     { word: 'Sol', emoji: '☀️' },
-    { word: 'Sorvete', emoji: '🍨' }
+    { word: 'Sundae', emoji: '🍨' },
+    { word: 'Sorvete', emoji: '🍦' }
   ]},
   { letter: 'T', examples: [
     { word: 'Trem', emoji: '🚆' },
@@ -298,12 +299,29 @@ function takeExample(initial, random = Math.random) {
   return bag.pop();
 }
 
+function getLetterIconPath(initial) {
+  return `${ICON_ASSET_PATH}letter-${initial.toLowerCase()}.webp`;
+}
+
+function getObjectIconPath(initial, example) {
+  const examples = EXAMPLES_BY_LETTER.get(initial) || [];
+  const exampleIndex = examples.indexOf(example);
+  const iconNumber = String(exampleIndex + 1).padStart(2, '0');
+  return `${ICON_ASSET_PATH}${initial.toLowerCase()}-${iconNumber}.webp`;
+}
+
 function createRoundData(level, random = Math.random) {
   const initials = drawInitials(level, PAIRS_PER_ROUND, random);
   const items = initials
     .map(initial => {
       const example = takeExample(initial, random);
-      return example ? { initial, label: example.word, emoji: example.emoji } : null;
+      return example
+        ? {
+            initial,
+            label: example.word,
+            icon: getObjectIconPath(initial, example)
+          }
+        : null;
     })
     .filter(Boolean);
 
@@ -494,7 +512,10 @@ function createLetterCard(letter) {
   button.className = 'initial-card letter-card';
   button.dataset.initial = letter.initial;
   button.setAttribute('aria-label', `Letra ${letter.initial}`);
-  button.innerHTML = `<span>${letter.initial}</span><span class="card-sound">🔊</span>`;
+  button.innerHTML = `
+    <img class="letter-icon" src="${getLetterIconPath(letter.initial)}" alt="" aria-hidden="true">
+    <span class="card-sound" aria-hidden="true">🔊</span>
+  `;
   button.addEventListener('pointerdown', event => startGesture(event, button));
   button.addEventListener('keydown', event => {
     if (event.key === 'Enter' || event.key === ' ') {
@@ -511,7 +532,14 @@ function createObjectCard(item) {
   button.dataset.initial = item.initial;
   button.dataset.label = item.label;
   button.setAttribute('aria-label', `${item.label}, começa com ${item.initial}`);
-  button.innerHTML = `<span class="object-emoji" aria-hidden="true">${item.emoji}</span>`;
+  button.innerHTML = `
+    <img
+      class="object-icon"
+      src="${item.icon}"
+      alt=""
+      aria-hidden="true"
+    >
+  `;
   button.addEventListener('pointerdown', () => Sounds.speak(getItemPhrase(item)));
   button.addEventListener('keydown', event => {
     if (event.key === 'Enter' || event.key === ' ') Sounds.speak(getItemPhrase(item));
